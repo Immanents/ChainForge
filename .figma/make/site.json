@@ -1,0 +1,10 @@
+{
+  "description": "Empower Web3 project teams with a comprehensive dashboard to monitor community activity, generate content, manage campaigns, and analyze growth metrics.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

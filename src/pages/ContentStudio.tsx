@@ -1,6 +1,9 @@
 import { useState } from "react"
+
 import { contentDrafts } from "../data/mockData"
+
 import { Icon } from "../components/Icons"
+
 import {
   Badge,
   Button,
@@ -11,6 +14,7 @@ import {
   Select,
   Tabs,
 } from "../components/ui"
+
 import {
   mockNanoBananaService,
   type GeneratedImage,
@@ -18,36 +22,53 @@ import {
 
 export default function ContentStudio() {
   const [tab, setTab] = useState("Generate")
+
   const [generating, setGenerating] = useState(false)
+
   const [includeImage, setIncludeImage] = useState(true)
+
   const [imagePrompt, setImagePrompt] = useState(
     "A precise orbital network visual representing seamless cross-chain intents, premium dark editorial style, Nova violet accent, no text",
   )
+
   const [images, setImages] = useState<GeneratedImage[]>([
     {
       id: "orbital-initial",
+
       prompt: "Nova Intent Layer launch visual",
+
       aspectRatio: "16:9",
+
       variant: "orbital",
     },
   ])
+
   const [selectedImage, setSelectedImage] = useState(0)
+
   const [approved, setApproved] = useState(false)
+
   const generate = async () => {
     setGenerating(true)
+
     if (includeImage) {
       const generated = await mockNanoBananaService.generate({
         prompt: imagePrompt,
+
         aspectRatio: "16:9",
+
         brandContext: "Nova Protocol",
       })
+
       setImages(generated)
+
       setSelectedImage(0)
     } else {
       await new Promise((resolve) => window.setTimeout(resolve, 900))
     }
+
     setGenerating(false)
   }
+
   return (
     <div className="page">
       <PageHeading
@@ -245,7 +266,9 @@ export default function ContentStudio() {
                 )}
                 {[
                   "Cross-chain shouldn't mean cross-your-fingers. Nova's new Intent Layer turns complex routes into one simple outcome — tell the network what you want, and Nova handles the path. Built for users. Designed for builders. Explore the launch ↓",
+
                   "The next phase of Nova is live. Our Intent Layer abstracts the complexity of moving across chains, giving developers a cleaner primitive and users a simpler experience. One intent. The best available route. No manual bridging.",
+
                   "What if using 5 chains felt like using one? Nova Intent Layer is now live — coordinating liquidity, routes and execution behind a single user action. Read the technical overview and join the builder waitlist.",
                 ].map((text, i) => (
                   <Card
@@ -327,9 +350,11 @@ export default function ContentStudio() {
 
 function GeneratedVisual({
   variant,
+
   compact = false,
 }: {
   variant: GeneratedImage["variant"]
+
   compact?: boolean
 }) {
   return (
@@ -361,9 +386,11 @@ function GeneratedVisual({
 
 function Field({
   label,
+
   children,
 }: {
   label: string
+
   children: React.ReactNode
 }) {
   return (
@@ -373,10 +400,12 @@ function Field({
     </label>
   )
 }
+
 function DraftTable({ published = false }: { published?: boolean }) {
   const rows = published
     ? contentDrafts.filter((x) => x.status === "Published")
     : contentDrafts
+
   return (
     <Card>
       <SectionHeading
@@ -433,8 +462,10 @@ function DraftTable({ published = false }: { published?: boolean }) {
     </Card>
   )
 }
+
 function Calendar() {
   const days = Array.from({ length: 35 }, (_, i) => i - 2)
+
   return (
     <Card>
       <SectionHeading

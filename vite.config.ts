@@ -1,46 +1,68 @@
 import { defineConfig, type HtmlTagDescriptor, type Plugin } from "vite"
+
 import react from "@vitejs/plugin-react"
+
 import tailwindcss from "@tailwindcss/vite"
+
 import path from "node:path"
 
 import siteConfiguration from "./.figma/make/site.json"
 
 // Vite config — https://vitejs.dev/config/
+
 export default defineConfig(({ mode }) => {
   // .figma/make/deploy-preview passes `--mode development` for cached-preview builds.
+
   const emitSourcemaps = mode === "development"
 
   return {
     base: process.env.FIGMA_PUBLIC_URL
       ? `${process.env.FIGMA_PUBLIC_URL}/`
       : "/",
+
     build: {
       sourcemap: emitSourcemaps ? "inline" : false,
+
       minify: !emitSourcemaps,
     },
+
     plugins: [
       react(),
+
       tailwindcss(),
+
+      figmaBlueprintProxy(),
+
       figmaSiteConfiguration(siteConfiguration),
+
       figmaErrorOverlayReplay(),
+
       figmaReactRefreshBoundaryFallback(),
+
       figmaMakeKitPlugin({ storiesGlob: "/src/**/*.stories.{ts,tsx,js,jsx}" }),
     ],
+
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+
     server: {
       host: process.env.FIGMA_DEV_SERVER_HOST || "0.0.0.0",
+
       port: parseInt(process.env.PORT || "8443"),
+
       strictPort: true,
+
       watch: {
         ignored: ["**/.figma/**"],
       },
     },
+
     preview: {
       host: process.env.FIGMA_DEV_SERVER_HOST || "0.0.0.0",
+
       port: parseInt(process.env.PORT || "8443"),
     },
   }
@@ -48,151 +70,219 @@ export default defineConfig(({ mode }) => {
 
 type FigmaSiteConfiguration = {
   title?: string
+
   description?: string
+
   language?: string
+
   robots?: {
     index?: boolean
   }
+
   icons?: {
     icon?: string
   }
+
   openGraph?: {
     image?: string
   }
+
   analytics?: {
     googleAnalyticsId?: string
   }
+
   customScripts?: {
     headStart?: string
+
     headEnd?: string
+
     bodyStart?: string
+
     bodyEnd?: string
   }
+
   accessibility?: {
     addBypassLinks?: boolean
   }
 }
 
 /** Applies /.figma/make/site.json to the generated document shell. */
+
 function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
   function sanitizeHtmlValue(value: string | undefined): string {
     return value?.replace(/[^a-zA-Z0-9_-]/g, "") || ""
   }
+
   function escapeHtmlText(value: string): string {
     return value
+
       .replace(/&/g, "&amp;")
+
       .replace(/</g, "&lt;")
+
       .replace(/>/g, "&gt;")
   }
+
   function replaceHtmlCommentSlot(
     html: string,
+
     slotName: string,
+
     content: string,
   ): string {
     return html.replace(`<!-- ${slotName} -->`, content)
   }
 
   const title = config.title ?? "Figma Make App"
+
   const description = config.description ?? ""
+
   const favicon = config.icons?.icon ?? ""
+
   const socialImage = config.openGraph?.image ?? ""
+
   const language = sanitizeHtmlValue(config.language) || "en"
+
   const googleAnalyticsId = sanitizeHtmlValue(
     config.analytics?.googleAnalyticsId,
   )
+
   const headStart = config.customScripts?.headStart ?? ""
+
   const headEnd = config.customScripts?.headEnd ?? ""
+
   const bodyStart = config.customScripts?.bodyStart ?? ""
+
   const bodyEnd = config.customScripts?.bodyEnd ?? ""
+
   const robotsTxt =
     config.robots?.index === false ? "User-agent: *\nDisallow: /\n" : ""
 
   return {
     name: "figma-site-configuration",
+
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!robotsTxt || req.url?.split("?")[0] !== "/robots.txt")
           return next()
 
         res.setHeader("Content-Type", "text/plain; charset=utf-8")
+
         res.end(robotsTxt)
       })
     },
+
     generateBundle() {
       if (!robotsTxt) return
 
       this.emitFile({
         type: "asset",
+
         fileName: "robots.txt",
+
         source: robotsTxt,
       })
     },
+
     transformIndexHtml: {
       order: "pre",
+
       handler(html) {
         let result = html
+
         result = replaceHtmlCommentSlot(result, "figma:lang", language)
+
         result = replaceHtmlCommentSlot(
           result,
+
           "figma:title",
+
           escapeHtmlText(title),
         )
+
         result = replaceHtmlCommentSlot(result, "figma:head-start", headStart)
+
         result = replaceHtmlCommentSlot(result, "figma:head-end", headEnd)
+
         result = replaceHtmlCommentSlot(result, "figma:body-start", bodyStart)
+
         result = replaceHtmlCommentSlot(result, "figma:body-end", bodyEnd)
 
         const tags: HtmlTagDescriptor[] = []
+
         if (description) {
           tags.push({
             tag: "meta",
+
             attrs: { name: "description", content: description },
+
             injectTo: "head",
           })
         }
+
         if (config.robots?.index === false) {
           tags.push({
             tag: "meta",
+
             attrs: { name: "robots", content: "noindex, nofollow" },
+
             injectTo: "head",
           })
         }
+
         if (favicon) {
           tags.push({
             tag: "link",
+
             attrs: { rel: "icon", href: favicon },
+
             injectTo: "head",
           })
         }
+
         if (title) {
           tags.push({
             tag: "meta",
+
             attrs: { property: "og:title", content: title },
+
             injectTo: "head",
           })
         }
+
         if (description) {
           tags.push({
             tag: "meta",
+
             attrs: { property: "og:description", content: description },
+
             injectTo: "head",
           })
         }
+
         if (socialImage) {
           tags.push(
             {
               tag: "meta",
+
               attrs: { property: "og:image", content: socialImage },
+
               injectTo: "head",
             },
+
             {
               tag: "meta",
+
               attrs: { name: "twitter:card", content: "summary_large_image" },
+
               injectTo: "head",
             },
+
             {
               tag: "meta",
+
               attrs: { name: "twitter:image", content: socialImage },
+
               injectTo: "head",
             },
           )
@@ -202,20 +292,26 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
           tags.push(
             {
               tag: "script",
+
               attrs: {
                 async: true,
+
                 src: `https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`,
               },
+
               injectTo: "head",
             },
+
             {
               tag: "script",
+
               children: `
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
   gtag('config', ${JSON.stringify(googleAnalyticsId)});
 `,
+
               injectTo: "head",
             },
           )
@@ -225,6 +321,7 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
           tags.push(
             {
               tag: "style",
+
               children: `
   .figma-bypass-link {
     position: fixed;
@@ -243,12 +340,17 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
     transform: translateY(0);
   }
 `,
+
               injectTo: "head",
             },
+
             {
               tag: "a",
+
               attrs: { class: "figma-bypass-link", href: "#root" },
+
               children: "Skip to content",
+
               injectTo: "body-prepend",
             },
           )
@@ -256,6 +358,7 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
 
         return {
           html: result,
+
           tags,
         }
       },
@@ -276,26 +379,33 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
  * `update` or `full-reload` so a stale overlay can't survive a
  * fixed build.
  */
+
 function figmaErrorOverlayReplay(): Plugin {
   return {
     name: "figma-error-overlay-replay",
+
     apply: "serve",
+
     configureServer(server) {
       let lastError: object | null = null
 
       const origSend = server.ws.send.bind(server.ws) as (
         ...args: any[]
       ) => void
+
       server.ws.send = (((...args: any[]) => {
         const payload = args[0]
+
         if (payload && typeof payload === "object" && !Array.isArray(payload)) {
           const type = (payload as { type?: string }).type
+
           if (type === "error") {
             lastError = (payload as object)
           } else if (type === "update" || type === "full-reload") {
             lastError = null
           }
         }
+
         return origSend(...args)
       }) as typeof server.ws.send)
 
@@ -320,59 +430,84 @@ function figmaErrorOverlayReplay(): Plugin {
  * mounted component family. React reports a successful refresh while leaving
  * the old tree mounted until the page is reloaded.
  */
+
 function figmaReactRefreshBoundaryFallback(): Plugin {
   type ModuleNode = import("vite").ModuleNode
+
   const hadRefreshBoundary = new Map<string, boolean>()
+
   const lostRefreshBoundaries = new Set<string>()
+
   let sendFullReload: (() => void) | null = null
 
   return {
     name: "figma-react-refresh-boundary-fallback",
+
     apply: "serve",
+
     enforce: "post",
+
     configureServer(server) {
       sendFullReload = () => server.ws.send({ type: "full-reload", path: "*" })
     },
+
     handleHotUpdate({ modules, server, timestamp }) {
       if (lostRefreshBoundaries.size === 0) return
 
       const visited = new Set<ModuleNode>()
+
       const pending = [...modules]
+
       while (pending.length > 0) {
         const current = pending.pop()
+
         if (!current || visited.has(current)) continue
+
         visited.add(current)
 
         const moduleId = current.id?.split("?")[0]
+
         if (moduleId && lostRefreshBoundaries.has(moduleId)) {
           const invalidated = new Set<ModuleNode>()
+
           for (const updatedModule of modules) {
             server.moduleGraph.invalidateModule(
               updatedModule,
+
               invalidated,
+
               timestamp,
+
               true,
             )
           }
+
           sendFullReload?.()
+
           return []
         }
 
         pending.push(...current.importers)
       }
     },
+
     transform(code, id) {
       if (!/\.[jt]sx?(?:\?|$)/.test(id) || id.includes("/node_modules/"))
         return null
 
       const moduleId = id.split("?")[0] ?? id
+
       const hasRefreshBoundary = code.includes("registerExportsForReactRefresh")
+
       const previousHadRefreshBoundary = hadRefreshBoundary.get(moduleId)
+
       hadRefreshBoundary.set(moduleId, hasRefreshBoundary)
 
       if (hasRefreshBoundary) lostRefreshBoundaries.delete(moduleId)
+
       if (previousHadRefreshBoundary && !hasRefreshBoundary) {
         lostRefreshBoundaries.add(moduleId)
+
         queueMicrotask(() => sendFullReload?.())
       }
 
@@ -392,16 +527,22 @@ function figmaReactRefreshBoundaryFallback(): Plugin {
  * builds (`vite build`) skip it entirely so the route doesn't leak
  * into shipped bundles.
  */
+
 function figmaMakeKitPlugin(options: {
   storiesGlob: string | string[]
 }): Plugin {
   const storiesGlob = Array.isArray(options.storiesGlob)
     ? options.storiesGlob
     : [options.storiesGlob]
+
   const ROUTE = "/.figma/make/kit.html"
+
   const VIRTUAL_ID = "virtual:figma-stories"
+
   const RESOLVED_ID = "\0" + VIRTUAL_ID
+
   const STORIES_MODULE = `export const stories = import.meta.glob(${JSON.stringify(storiesGlob)})`
+
   const HTML_BOOTSTRAP = `<!doctype html>
 <html lang="en">
 <head>
@@ -420,22 +561,30 @@ function figmaMakeKitPlugin(options: {
 
   return {
     name: "figma-make-kit",
+
     apply: "serve",
+
     resolveId(id) {
       if (id === VIRTUAL_ID) return RESOLVED_ID
+
       return null
     },
+
     load(id) {
       if (id !== RESOLVED_ID) return null
+
       return STORIES_MODULE
     },
+
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url || ""
+
         if (url.split("?")[0] !== ROUTE) return next()
 
         try {
           res.setHeader("Content-Type", "text/html")
+
           res.end(await server.transformIndexHtml(url, HTML_BOOTSTRAP))
         } catch (err) {
           next(err as Error)
@@ -443,4 +592,156 @@ function figmaMakeKitPlugin(options: {
       })
     },
   }
+}
+
+/**
+ * Server-side proxy for Gemini API blueprint generation.
+ * Keeps the API key out of client bundles — the key is read from
+ * `process.env.VITE_GEMINI_API_KEY` only on the server.
+ */
+
+function figmaBlueprintProxy(): Plugin {
+  return {
+    name: "figma-blueprint-proxy",
+
+    apply: "serve",
+
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (
+          req.method !== "POST" ||
+          req.url?.split("?")[0] !== "/api/generate-blueprint"
+        ) {
+          return next()
+        }
+
+        const apiKey = process.env.VITE_GEMINI_API_KEY
+
+        if (!apiKey) {
+          res.statusCode = 500
+
+          res.setHeader("Content-Type", "text/plain")
+
+          res.end(
+            "VITE_GEMINI_API_KEY is not configured. Create a .env file with your Gemini API key.",
+          )
+
+          return
+        }
+
+        try {
+          const body = await new Promise<string>((resolve, reject) => {
+            let data = ""
+
+            req.on("data", (chunk: Buffer) => {
+              data += chunk.toString()
+            })
+
+            req.on("end", () => resolve(data))
+
+            req.on("error", reject)
+          })
+
+          const input = JSON.parse(body)
+
+          const prompt = buildBlueprintPrompt(input)
+
+          const { GoogleGenerativeAI } = await import("@google/generative-ai")
+
+          const genAI = new GoogleGenerativeAI(apiKey)
+
+          const model = genAI.getGenerativeModel({
+            model: "gemini-2.0-flash",
+
+            generationConfig: {
+              responseMimeType: "application/json",
+            },
+          })
+
+          const result = await model.generateContent(prompt)
+
+          const text = result.response.text()
+
+          // Validate the parsed JSON before sending
+
+          let parsed: unknown
+
+          try {
+            parsed = JSON.parse(text)
+          } catch {
+            res.statusCode = 502
+
+            res.setHeader("Content-Type", "text/plain")
+
+            res.end("The AI returned malformed JSON. Please try again.")
+
+            return
+          }
+
+          res.setHeader("Content-Type", "application/json")
+
+          res.end(JSON.stringify(parsed))
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Unknown error"
+
+          console.error("[Blueprint Proxy] Error:", message)
+
+          res.statusCode = 502
+
+          res.setHeader("Content-Type", "text/plain")
+
+          res.end(`Gemini API error: ${message}`)
+        }
+      })
+    },
+  }
+}
+
+function buildBlueprintPrompt(input: {
+  projectName: string
+
+  projectIdea: string
+
+  targetAudience: string
+
+  preferredBlockchain?: string
+
+  additionalContext?: string
+}): string {
+  return `You are a senior Web3 architect and product strategist. A founder has described a project idea below. Analyze it and produce a structured project blueprint.
+
+PROJECT DETAILS:
+- Name: ${input.projectName}
+- Idea and problem: ${input.projectIdea}
+- Target audience: ${input.targetAudience}
+${
+  input.preferredBlockchain
+    ? `- Preferred blockchain: ${input.preferredBlockchain}`
+    : "- No blockchain preference specified"
+}
+${
+  input.additionalContext
+    ? `- Additional context: ${input.additionalContext}`
+    : ""
+}
+
+Respond with a JSON object matching this exact schema (no markdown, no code fences, just valid JSON):
+
+{
+  "problemStatement": "A clear 2-3 sentence description of the core problem being addressed",
+  "targetUsers": "Specific description of who will use this and their primary needs",
+  "proposedSolution": "How the project solves the problem, including its unique approach (2-4 sentences)",
+  "coreMvpFeatures": ["Feature 1 with brief description", "Feature 2 with brief description", "...at least 4 and at most 8 features"],
+  "recommendedArchitecture": "Technical architecture overview covering frontend, backend, smart contracts, and infrastructure (2-4 sentences)",
+  "smartContractRequirements": "What smart contracts are needed, their purpose, and key functions. If no smart contracts are needed, explain why. Note: these are requirements only and must be professionally audited before deployment.",
+  "securityConsiderations": "Key security risks, mitigations, and assumptions. Include both smart contract security and platform security concerns.",
+  "openQuestions": ["Question 1 that the founder needs to decide", "Question 2", "...at least 3 and at most 6 questions"]
+}
+
+Important:
+- Be specific and actionable, not generic.
+- Ground recommendations in the project's actual domain and audience.
+- Never claim any smart contract code is production-ready or audited.
+- Identify real trade-offs and decisions the founder needs to make.
+- If the blockchain preference is unusual for the use case, note that in open questions.`
 }

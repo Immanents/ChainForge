@@ -1,7 +1,11 @@
 import { useState } from "react"
+
 import { kols } from "../data/mockData"
+
 import { Bars } from "../components/Charts"
+
 import { Icon } from "../components/Icons"
+
 import {
   Avatar,
   Badge,
@@ -15,8 +19,10 @@ import {
 } from "../components/ui"
 
 type Kol = typeof kols[number]
+
 export default function Kols() {
   const [selected, setSelected] = useState<Kol | null>(null)
+
   return (
     <div className="page">
       <PageHeading
@@ -125,7 +131,12 @@ export default function Kols() {
   )
 }
 
-function KolDrawer({ kol, close }: { kol: Kol close: () => void }) {
+type KolDrawerProps = {
+  kol: Kol
+  close: () => void
+}
+
+function KolDrawer({ kol, close }: KolDrawerProps) {
   return (
     <>
       <button
@@ -194,6 +205,7 @@ function KolDrawer({ kol, close }: { kol: Kol close: () => void }) {
           <SectionHeading title="Recent Nova mentions" />
           {[
             "Nova's intent architecture is worth studying if you're building cross-chain UX.",
+
             "Good technical breakdown from the Nova team today. More of this.",
           ].map((p, i) => (
             <div className="mention-post" key={p}>

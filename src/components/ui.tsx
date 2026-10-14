@@ -4,18 +4,26 @@ import type {
   ReactNode,
   SelectHTMLAttributes,
 } from "react"
+
 import { Icon, type IconName } from "./Icons"
 
 export function Button({
   children,
+
   variant = "primary",
+
   size = "md",
+
   icon,
+
   className = "",
+
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost" | "danger"
+
   size?: "sm" | "md" | "icon"
+
   icon?: IconName
 }) {
   return (
@@ -31,7 +39,9 @@ export function Button({
 
 export function Input({
   icon,
+
   className = "",
+
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { icon?: IconName }) {
   return (
@@ -44,7 +54,9 @@ export function Input({
 
 export function Select({
   children,
+
   className = "",
+
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
@@ -59,9 +71,11 @@ export function Select({
 
 export function Card({
   children,
+
   className = "",
 }: {
   children: ReactNode
+
   className?: string
 }) {
   return <section className={`card ${className}`}>{children}</section>
@@ -69,9 +83,11 @@ export function Card({
 
 export function Badge({
   children,
+
   tone = "neutral",
 }: {
   children: ReactNode
+
   tone?: "neutral" | "success" | "warning" | "danger" | "brand" | "info"
 }) {
   return <span className={`badge badge-${tone}`}>{children}</span>
@@ -79,11 +95,15 @@ export function Badge({
 
 export function Avatar({
   name,
+
   src,
+
   size = "md",
 }: {
   name: string
+
   src?: string
+
   size?: "sm" | "md" | "lg"
 }) {
   return src ? (
@@ -91,9 +111,13 @@ export function Avatar({
   ) : (
     <span className={`avatar avatar-${size} avatar-fallback`}>
       {name
+
         .split(" ")
+
         .map((x) => x[0])
+
         .slice(0, 2)
+
         .join("")}
     </span>
   )
@@ -101,9 +125,11 @@ export function Avatar({
 
 export function Progress({
   value,
+
   tone = "brand",
 }: {
   value: number
+
   tone?: "brand" | "success" | "warning"
 }) {
   return (
@@ -118,11 +144,15 @@ export function Progress({
 
 export function PageHeading({
   title,
+
   description,
+
   actions,
 }: {
   title: string
+
   description?: string
+
   actions?: ReactNode
 }) {
   return (
@@ -138,11 +168,15 @@ export function PageHeading({
 
 export function SectionHeading({
   title,
+
   description,
+
   action,
 }: {
   title: string
+
   description?: string
+
   action?: ReactNode
 }) {
   return (
@@ -158,11 +192,15 @@ export function SectionHeading({
 
 export function Tabs({
   items,
+
   active,
+
   onChange,
 }: {
   items: string[]
+
   active: string
+
   onChange: (tab: string) => void
 }) {
   return (
@@ -182,13 +220,19 @@ export function Tabs({
 
 export function EmptyState({
   icon = "sparkles",
+
   title,
+
   description,
+
   action,
 }: {
   icon?: IconName
+
   title: string
+
   description: string
+
   action?: ReactNode
 }) {
   return (
@@ -205,9 +249,11 @@ export function EmptyState({
 
 export function Toggle({
   active = false,
+
   label,
 }: {
   active?: boolean
+
   label?: string
 }) {
   return (

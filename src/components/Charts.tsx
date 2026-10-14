@@ -2,19 +2,25 @@ import { useId } from "react"
 
 export function Sparkline({
   data,
+
   positive = true,
 }: {
   data: number[]
+
   positive?: boolean
 }) {
   const max = Math.max(...data),
     min = Math.min(...data)
+
   const points = data
+
     .map(
       (v, i) =>
         `${(i / (data.length - 1)) * 100},${38 - ((v - min) / (max - min || 1)) * 30}`,
     )
+
     .join(" ")
+
   return (
     <svg
       className={`sparkline ${positive ? "positive" : "negative"}`}
@@ -32,6 +38,7 @@ export function AreaChart({
   variant?: "brand" | "green"
 }) {
   const id = useId().replace(/:/g, "")
+
   return (
     <div className="chart-wrap">
       <div className="chart-y">
@@ -125,13 +132,17 @@ export function MultiLineChart() {
 
 export function DonutChart({
   values = [78, 16, 6],
+
   labels = ["Positive", "Neutral", "Negative"],
 }: {
   values?: number[]
+
   labels?: string[]
 }) {
   const colors = ["var(--success)", "var(--brand)", "var(--danger)"]
+
   let offset = 0
+
   return (
     <div className="donut-layout">
       <div className="donut">
@@ -152,7 +163,9 @@ export function DonutChart({
                 strokeLinecap="round"
               />
             )
+
             offset += v
+
             return el
           })}
         </svg>

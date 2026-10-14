@@ -1,7 +1,11 @@
 import { useState } from "react"
+
 import { activity, alerts } from "../data/mockData"
+
 import { AreaChart, DonutChart } from "../components/Charts"
+
 import { Icon } from "../components/Icons"
+
 import {
   Badge,
   Button,
@@ -15,14 +19,19 @@ import {
 
 const communityKpis = [
   ["Total members", "128,420", "+8.4%"],
+
   ["Growth rate", "7.8%", "+1.2%"],
+
   ["Engagement", "14.8%", "+2.3%"],
+
   ["Active users", "32,840", "+12.6%"],
+
   ["Positive sentiment", "78%", "+4.2%"],
 ]
 
 export default function Community() {
   const [tab, setTab] = useState("Overview")
+
   return (
     <div className="page">
       <PageHeading
@@ -275,8 +284,11 @@ function Sentiment() {
         <div className="topic-list">
           {[
             ["Intent layer launch", "Positive", 842, "+18%"],
+
             ["Validator rewards", "Positive", 610, "+11%"],
+
             ["Claim delays", "Negative", 184, "+26%"],
+
             ["Token utility", "Neutral", 524, "+34%"],
           ].map((t) => (
             <div key={t[0]}>

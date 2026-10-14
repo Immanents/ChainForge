@@ -1,36 +1,60 @@
 import type { ReactNode } from "react"
+
 import { navItems } from "../data/mockData"
+
 import { Icon, type IconName } from "./Icons"
+
 import { Avatar, Button } from "./ui"
+
 import type { ProjectRecord } from "../data/projects"
 
 export function AppShell({
   page,
+
   setPage,
+
   collapsed,
+
   setCollapsed,
+
   mobileOpen,
+
   setMobileOpen,
+
   theme,
+
   setTheme,
+
   activeProject,
+
   children,
 }: {
   page: string
+
   setPage: (page: string) => void
+
   collapsed: boolean
+
   setCollapsed: (v: boolean) => void
+
   mobileOpen: boolean
+
   setMobileOpen: (v: boolean) => void
+
   theme: "dark" | "light"
+
   setTheme: (theme: "dark" | "light") => void
+
   activeProject: ProjectRecord
+
   children: ReactNode
 }) {
   const navigate = (item: string) => {
     setPage(item)
+
     setMobileOpen(false)
   }
+
   return (
     <div className="app-shell">
       {mobileOpen && (
@@ -49,9 +73,7 @@ export function AppShell({
           <span className="brand-mark">
             <span />
           </span>
-          {!collapsed && (
-            <strong>ChainForge</strong>
-          )}
+          {!collapsed && <strong>ChainForge</strong>}
           <Button
             variant="ghost"
             size="icon"

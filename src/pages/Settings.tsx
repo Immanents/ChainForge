@@ -1,5 +1,7 @@
 import { useState } from "react"
+
 import { Icon } from "../components/Icons"
+
 import {
   Avatar,
   Badge,
@@ -15,6 +17,7 @@ import {
 
 export default function Settings() {
   const [tab, setTab] = useState("Workspace")
+
   return (
     <div className="page">
       <PageHeading
@@ -24,11 +27,17 @@ export default function Settings() {
       <Tabs
         items={[
           "Workspace",
+
           "Project",
+
           "Team",
+
           "Notifications",
+
           "Integrations",
+
           "AI Configuration",
+
           "Security",
         ]}
         active={tab}
@@ -44,6 +53,7 @@ export default function Settings() {
     </div>
   )
 }
+
 function Workspace({ project = false }: { project?: boolean }) {
   return (
     <Card className="settings-card">
@@ -87,6 +97,7 @@ function Workspace({ project = false }: { project?: boolean }) {
     </Card>
   )
 }
+
 function Team() {
   return (
     <Card>
@@ -98,8 +109,11 @@ function Team() {
       <div className="team-list">
         {[
           ["Maya Chen", "maya@novaprotocol.xyz", "Owner"],
+
           ["Alex Morgan", "alex@novaprotocol.xyz", "Admin"],
+
           ["Sam Rivera", "sam@novaprotocol.xyz", "Editor"],
+
           ["Priya Shah", "priya@novaprotocol.xyz", "Analyst"],
         ].map((x) => (
           <div key={x[1]}>
@@ -116,6 +130,7 @@ function Team() {
     </Card>
   )
 }
+
 function Notifications() {
   return (
     <Card className="settings-card">
@@ -126,15 +141,23 @@ function Notifications() {
       {[
         [
           "Critical community alerts",
+
           "Immediate alerts for fast-moving risks",
+
           true,
         ],
+
         ["KOL mentions", "When a high-relevance KOL mentions Nova", true],
+
         ["Content approvals", "When a draft is ready for your review", true],
+
         ["Campaign milestones", "Campaign progress and KPI thresholds", false],
+
         [
           "Weekly intelligence digest",
+
           "Monday summary of community and growth",
+
           true,
         ],
       ].map((x) => (
@@ -149,16 +172,21 @@ function Notifications() {
     </Card>
   )
 }
+
 function Integrations() {
   return (
     <div className="integration-list">
       {[
         [
           "X",
+
           "Community mentions, content performance and publishing",
+
           "Connected",
         ],
+
         ["Telegram", "Group activity, topics and sentiment", "Connected"],
+
         ["Discord", "Channel activity, questions and feedback", "Connected"],
       ].map((x) => (
         <Card key={x[0]}>
@@ -182,6 +210,7 @@ function Integrations() {
     </div>
   )
 }
+
 function AIConfig() {
   return (
     <div className="settings-stack">
@@ -222,17 +251,25 @@ function AIConfig() {
         {[
           [
             "Require approval before publishing",
+
             "All AI-generated content must be approved by a team member",
+
             true,
           ],
+
           [
             "Require admin approval for campaigns",
+
             "Campaign content needs an admin review",
+
             true,
           ],
+
           [
             "Allow direct scheduling after approval",
+
             "Approved drafts can be added to the content calendar",
+
             true,
           ],
         ].map((x) => (
@@ -248,6 +285,7 @@ function AIConfig() {
     </div>
   )
 }
+
 function Security() {
   return (
     <div className="settings-stack">
@@ -258,6 +296,7 @@ function Security() {
         />
         {[
           ["Chrome on macOS", "San Francisco, US · Current session"],
+
           ["Safari on iPhone", "San Francisco, US · 2 hours ago"],
         ].map((x, i) => (
           <div className="session-row" key={x[0]}>

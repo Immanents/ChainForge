@@ -1,10 +1,12 @@
 import { useState } from "react"
+
 import {
   AreaChart,
   Bars,
   DonutChart,
   MultiLineChart,
 } from "../components/Charts"
+
 import {
   Badge,
   Button,
@@ -15,6 +17,7 @@ import {
 
 export default function Analytics() {
   const [range, setRange] = useState("30 days")
+
   return (
     <div className="page">
       <PageHeading
@@ -45,8 +48,11 @@ export default function Analytics() {
       <div className="analytics-kpis">
         {[
           ["Total reach", "2.84M", "+24.8%"],
+
           ["Engagements", "186.2K", "+18.4%"],
+
           ["Mentions", "6,284", "+12.6%"],
+
           ["Positive sentiment", "78%", "+4.2%"],
         ].map((x) => (
           <Card key={x[0]}>
@@ -111,9 +117,13 @@ export default function Analytics() {
           <div className="source-list">
             {[
               ["Organic X", "4,820", 42],
+
               ["Campaigns", "2,940", 26],
+
               ["KOL mentions", "1,680", 15],
+
               ["Referrals", "1,240", 11],
+
               ["Direct", "684", 6],
             ].map((s) => (
               <div key={s[0]}>
@@ -145,34 +155,57 @@ export default function Analytics() {
           {[
             [
               "Intent Layer Launch",
+
               "1.2M",
+
               "8.7%",
+
               "6,420",
+
               "+11%",
+
               "$3.84 CPM",
             ],
+
             [
               "Nova Builders Season 2",
+
               "482K",
+
               "12.4%",
+
               "2,180",
+
               "+8%",
+
               "$4.12 CPM",
             ],
+
             [
               "Testnet Momentum",
+
               "1.8M",
+
               "10.8%",
+
               "12,480",
+
               "+14%",
+
               "$2.96 CPM",
             ],
+
             [
               "Community AMA Series",
+
               "218K",
+
               "16.1%",
+
               "1,240",
+
               "+6%",
+
               "$5.20 CPM",
             ],
           ].map((r) => (

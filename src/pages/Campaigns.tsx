@@ -1,7 +1,11 @@
 import { useState } from "react"
+
 import { campaigns } from "../data/mockData"
+
 import { AreaChart } from "../components/Charts"
+
 import { Icon } from "../components/Icons"
+
 import {
   Badge,
   Button,
@@ -15,12 +19,17 @@ import {
 } from "../components/ui"
 
 type Campaign = typeof campaigns[number]
+
 export default function Campaigns() {
   const [view, setView] = useState<"list" | "create" | "detail">("list")
+
   const [selected, setSelected] = useState<Campaign>(campaigns[0])
+
   if (view === "create") return <CreateCampaign back={() => setView("list")} />
+
   if (view === "detail")
     return <CampaignDetail campaign={selected} back={() => setView("list")} />
+
   return (
     <div className="page">
       <PageHeading
@@ -86,6 +95,7 @@ export default function Campaigns() {
               key={c.name}
               onClick={() => {
                 setSelected(c)
+
                 setView("detail")
               }}
             >
@@ -231,12 +241,15 @@ function CreateCampaign({ back }: { back: () => void }) {
 
 function CampaignDetail({
   campaign,
+
   back,
 }: {
   campaign: Campaign
+
   back: () => void
 }) {
   const [tab, setTab] = useState("Performance")
+
   return (
     <div className="page">
       <button className="back-link" onClick={back}>
@@ -260,9 +273,13 @@ function CampaignDetail({
       <Tabs
         items={[
           "Performance",
+
           "Content",
+
           "KOL activity",
+
           "Community response",
+
           "Timeline",
         ]}
         active={tab}
@@ -271,8 +288,11 @@ function CampaignDetail({
       <div className="campaign-detail-kpis">
         {[
           ["Reach", campaign.reach, "+18.4%"],
+
           ["Engagement", campaign.engagement, "+2.8%"],
+
           ["Mentions", "4,820", "+32.1%"],
+
           ["Conversions", "18,420", "+14.6%"],
         ].map((x) => (
           <Card key={x[0]}>
@@ -295,7 +315,9 @@ function CampaignDetail({
           <div className="goal-list">
             {[
               ["Reach", "1.2M", "1.5M", 80],
+
               ["Engagements", "104K", "120K", 87],
+
               ["New members", "8.4K", "12K", 70],
             ].map((g) => (
               <div key={g[0]}>

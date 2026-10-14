@@ -1,5 +1,7 @@
 import { useState } from "react"
+
 import { Icon } from "../components/Icons"
+
 import {
   Badge,
   Button,
@@ -9,35 +11,45 @@ import {
   SectionHeading,
   Select,
 } from "../components/ui"
+
 import { exportProject, type ProjectRecord } from "../data/projects"
 
 type Props = {
   projects: ProjectRecord[]
+
   activeProject: ProjectRecord
+
   setActiveProjectId: (id: string) => void
+
   createProject: (project: ProjectRecord) => void
 }
 
 export default function Project({
   projects,
+
   activeProject,
+
   setActiveProjectId,
+
   createProject,
 }: Props) {
   const [view, setView] = useState<"connected" | "setup" | "create">(
     "connected",
   )
+
   if (view === "create") {
     return (
       <CreateProject
         cancel={() => setView("connected")}
         create={(project) => {
           createProject(project)
+
           setView("connected")
         }}
       />
     )
   }
+
   return (
     <div className="page">
       <PageHeading
@@ -190,8 +202,11 @@ function ConnectedState({ project }: { project: ProjectRecord }) {
           </div>
           {[
             ["Contract", project.tokenSymbol ? "0x7b4...29Ac" : "—"],
+
             ["Token type", project.tokenSymbol ? "Utility & governance" : "—"],
+
             ["Project status", project.status],
+
             ["Created", new Date(project.createdAt).toLocaleDateString()],
           ].map((item) => (
             <div className="detail-row" key={item[0]}>
@@ -202,7 +217,9 @@ function ConnectedState({ project }: { project: ProjectRecord }) {
           <SectionHeading title="Social links" />
           {[
             ["X", "Connect account"],
+
             ["Discord", "Connect server"],
+
             ["Telegram", "Connect group"],
           ].map((item) => (
             <div className="social-link" key={item[0]}>
@@ -228,34 +245,53 @@ function ConnectedState({ project }: { project: ProjectRecord }) {
 
 function CreateProject({
   cancel,
+
   create,
 }: {
   cancel: () => void
+
   create: (project: ProjectRecord) => void
 }) {
   const [name, setName] = useState("")
+
   const [description, setDescription] = useState("")
+
   const [website, setWebsite] = useState("")
+
   const [category, setCategory] = useState("Infrastructure")
+
   const [audience, setAudience] = useState("")
+
   const [status, setStatus] = useState<ProjectRecord["status"]>("Pre-launch")
+
   const [tokenSymbol, setTokenSymbol] = useState("")
+
   const [error, setError] = useState("")
 
   const submit = () => {
     if (!name.trim()) {
       setError("Add a project name to continue.")
+
       return
     }
+
     create({
       id: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
+
       name: name.trim(),
+
       description: description.trim(),
+
       website: website.trim(),
+
       category,
+
       audience: audience.trim(),
+
       status,
+
       tokenSymbol: tokenSymbol.trim().toUpperCase(),
+
       createdAt: new Date().toISOString(),
     })
   }
@@ -281,6 +317,7 @@ function CreateProject({
               value={name}
               onChange={(event) => {
                 setName(event.target.value)
+
                 setError("")
               }}
               placeholder="e.g. Atlas Network"
@@ -380,8 +417,11 @@ function Connections() {
       <div className="connection-grid">
         {[
           ["X", "Connected", "Last synced 2 min ago"],
+
           ["Telegram", "Connected", "3 groups monitored"],
+
           ["Discord", "Connected", "12 channels monitored"],
+
           ["Website", "Connected", "Analytics active"],
         ].map((item, index) => (
           <div className="connection-card" key={item[0]}>
@@ -413,9 +453,11 @@ function Connections() {
 
 function SetupState({
   project,
+
   done,
 }: {
   project: ProjectRecord
+
   done: () => void
 }) {
   return (

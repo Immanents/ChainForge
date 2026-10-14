@@ -1,6 +1,9 @@
 import { alerts, campaigns, contentDrafts, kols, kpis } from "../data/mockData"
+
 import { AreaChart, DonutChart, Sparkline } from "../components/Charts"
+
 import { Icon, type IconName } from "../components/Icons"
+
 import {
   Avatar,
   Badge,
@@ -138,8 +141,11 @@ export default function Overview({
           <div className="platform-list">
             {[
               ["X", "52%", 52],
+
               ["Discord", "28%", 28],
+
               ["Telegram", "15%", 15],
+
               ["Website", "5%", 5],
             ].map(([name, val, width]) => (
               <div key={name as string}>

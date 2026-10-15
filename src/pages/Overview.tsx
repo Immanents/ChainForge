@@ -27,7 +27,11 @@ export default function Overview({
         description="Your live growth intelligence for Nova Protocol."
         actions={
           <>
-            <Select defaultValue="30">
+            <div className="live-status-pill" title="AI telemetry stream online">
+              <span className="live-status-dot" />
+              <span>AI Active</span>
+            </div>
+            <Select defaultValue="30" aria-label="Time period range">
               <option value="7">Last 7 days</option>
               <option value="30">Last 30 days</option>
               <option value="90">Last 90 days</option>
@@ -39,22 +43,45 @@ export default function Overview({
         }
       />
       <div className="kpi-grid">
-        {kpis.map((kpi) => (
-          <Card className="kpi-card" key={kpi.label}>
-            <div className="kpi-top">
-              <span className="kpi-icon">
-                <Icon name={kpi.icon as IconName} />
-              </span>
-              <Badge tone="success">{kpi.change}</Badge>
-            </div>
-            <div className="kpi-value">{kpi.value}</div>
-            <div className="kpi-label">{kpi.label}</div>
-            <div className="kpi-bottom">
-              <span>{kpi.note}</span>
-              <Sparkline data={kpi.data} />
-            </div>
-          </Card>
-        ))}
+        {kpis.map((kpi, idx) => {
+          const isPositive = kpi.change.startsWith("+")
+          const iconModifier =
+            idx === 0
+              ? "kpi-icon-cyan"
+              : idx === 1
+                ? "kpi-icon-emerald"
+                : idx === 2
+                  ? "kpi-icon-violet"
+                  : idx === 3
+                    ? "kpi-icon-cyan"
+                    : idx === 4
+                      ? "kpi-icon-violet"
+                      : "kpi-icon-emerald"
+
+          return (
+            <Card className="kpi-card" key={kpi.label}>
+              <div className="kpi-top">
+                <span className={`kpi-icon ${iconModifier}`}>
+                  <Icon name={kpi.icon as IconName} />
+                </span>
+                <Badge tone={isPositive ? "success" : "danger"}>
+                  {kpi.change}
+                </Badge>
+              </div>
+              <div>
+                <div className="kpi-value">{kpi.value}</div>
+                <div className="kpi-label">{kpi.label}</div>
+              </div>
+              <div className="kpi-bottom">
+                <span>{kpi.note}</span>
+                <Sparkline
+                  data={kpi.data}
+                  positive={isPositive}
+                />
+              </div>
+            </Card>
+          )
+        })}
       </div>
       <div className="dashboard-grid">
         <Card className="span-2 chart-card">
@@ -73,6 +100,7 @@ export default function Overview({
           <div className="chart-summary">
             <strong>128,420</strong>
             <Badge tone="success">+8.4%</Badge>
+            <Badge tone="cyan">Intent Layer Spike</Badge>
             <span>+9,842 this period</span>
           </div>
           <AreaChart />
@@ -110,7 +138,7 @@ export default function Overview({
               <div className="alert-row" key={a.title}>
                 <span
                   className={`alert-icon alert-${
-                    i === 1 ? "danger" : i === 0 ? "success" : "brand"
+                    i === 1 ? "danger" : i === 0 ? "success" : "cyan"
                   }`}
                 >
                   <Icon
@@ -123,7 +151,7 @@ export default function Overview({
                 </div>
                 <span className="alert-meta">
                   <Badge
-                    tone={i === 1 ? "danger" : i === 0 ? "success" : "brand"}
+                    tone={i === 1 ? "danger" : i === 0 ? "success" : "cyan"}
                   >
                     {a.severity}
                   </Badge>

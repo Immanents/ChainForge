@@ -73,13 +73,19 @@ export function AppShell({
           <span className="brand-mark">
             <span />
           </span>
-          {!collapsed && <strong>ChainForge</strong>}
+          {!collapsed && (
+            <>
+              <strong>ChainForge</strong>
+              <span className="brand-badge">AI</span>
+            </>
+          )}
           <Button
             variant="ghost"
             size="icon"
             icon="close"
             className="mobile-close"
             onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation"
           />
         </div>
         <nav className="nav-list">

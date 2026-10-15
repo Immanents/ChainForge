@@ -57,7 +57,8 @@ export function AreaChart({
       >
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="currentColor" stopOpacity=".28" />
+            <stop offset="0%" stopColor="currentColor" stopOpacity=".32" />
+            <stop offset="65%" stopColor="currentColor" stopOpacity=".06" />
             <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
           </linearGradient>
         </defs>
@@ -73,7 +74,8 @@ export function AreaChart({
           className="line"
           d="M0 205 C45 198 62 183 103 187 S167 159 208 163 S274 139 314 147 S375 108 417 121 S485 83 523 95 S580 62 626 68 S670 36 700 28"
         />
-        <circle cx="700" cy="28" r="5" />
+        <circle cx="700" cy="28" r="8" fill="none" stroke="currentColor" strokeWidth="1.5" opacity=".35" />
+        <circle cx="700" cy="28" r="4.5" />
       </svg>
       <div className="chart-x">
         <span>Feb 24</span>

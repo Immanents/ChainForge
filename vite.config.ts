@@ -1,4 +1,4 @@
-import { defineConfig, type HtmlTagDescriptor, type Plugin } from "vite"
+import { defineConfig, type HtmlTagDescriptor, type Plugin, loadEnv } from "vite"
 
 import react from "@vitejs/plugin-react"
 
@@ -51,7 +51,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: process.env.FIGMA_DEV_SERVER_HOST || "0.0.0.0",
 
-      port: parseInt(process.env.PORT || "8443"),
+      port: parseInt(process.env.PORT || "5173"),
 
       strictPort: true,
 
@@ -63,7 +63,7 @@ export default defineConfig(({ mode }) => {
     preview: {
       host: process.env.FIGMA_DEV_SERVER_HOST || "0.0.0.0",
 
-      port: parseInt(process.env.PORT || "8443"),
+      port: parseInt(process.env.PORT || "5173"),
     },
   }
 })
@@ -615,7 +615,9 @@ function figmaBlueprintProxy(): Plugin {
           return next()
         }
 
-        const apiKey = process.env.VITE_GEMINI_API_KEY
+        const apiKey =
+          process.env.VITE_GEMINI_API_KEY ||
+          loadEnv("development", process.cwd(), "").VITE_GEMINI_API_KEY
 
         if (!apiKey) {
           res.statusCode = 500
@@ -651,7 +653,7 @@ function figmaBlueprintProxy(): Plugin {
           const genAI = new GoogleGenerativeAI(apiKey)
 
           const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "gemini-3.8-flash",
 
             generationConfig: {
               responseMimeType: "application/json",

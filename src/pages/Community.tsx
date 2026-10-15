@@ -102,7 +102,7 @@ export default function Community() {
 
 function ActivityFeed({ limit }: { limit?: number }) {
   return (
-    <Card>
+    <Card className="activity-card">
       <SectionHeading
         title="Live activity"
         description="Important events from all connected communities"

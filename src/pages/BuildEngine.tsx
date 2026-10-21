@@ -357,6 +357,7 @@ function GenerateTab({ onSaved }: { onSaved: () => void }) {
             <option>Solana</option>
             <option>Avalanche</option>
             <option>BNB Chain</option>
+            <option>Robinhood</option>
             <option>Other</option>
           </Select>
         </label>

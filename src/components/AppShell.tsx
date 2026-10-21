@@ -27,6 +27,8 @@ export function AppShell({
 
   activeProject,
 
+  onGoToLanding,
+
   children,
 }: {
   page: string
@@ -46,6 +48,8 @@ export function AppShell({
   setTheme: (theme: "dark" | "light") => void
 
   activeProject: ProjectRecord
+
+  onGoToLanding?: () => void
 
   children: ReactNode
 }) {
@@ -70,9 +74,11 @@ export function AppShell({
         }`}
       >
         <div className="brand">
-          <span className="brand-mark">
-            <span />
-          </span>
+          <img
+            src="/logo-square.png"
+            alt="ChainForge Logo"
+            className="brand-logo-img"
+          />
           {!collapsed && (
             <>
               <strong>ChainForge</strong>
@@ -109,6 +115,16 @@ export function AppShell({
             <Icon name="settings" />
             {!collapsed && <span>Settings</span>}
           </button>
+          {onGoToLanding && (
+            <button
+              className="nav-item"
+              onClick={onGoToLanding}
+              title="Return to Landing Page"
+            >
+              <Icon name="globe" />
+              {!collapsed && <span>Landing Page</span>}
+            </button>
+          )}
         </nav>
         <div className="sidebar-bottom">
           <button className="workspace-card" onClick={() => setPage("Project")}>
@@ -163,6 +179,18 @@ export function AppShell({
             </button>
           </div>
           <div className="top-actions">
+            {onGoToLanding && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon="globe"
+                onClick={onGoToLanding}
+                className="text-xs"
+                title="Return to public landing page"
+              >
+                Public Site
+              </Button>
+            )}
             <button className="search-trigger">
               <Icon name="search" />
               <span>Search anything...</span>

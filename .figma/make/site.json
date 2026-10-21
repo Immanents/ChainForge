@@ -1,5 +1,9 @@
 {
-  "description": "Empower Web3 project teams with a comprehensive dashboard to monitor community activity, generate content, manage campaigns, and analyze growth metrics.",
+  "title": "ChainForge — Build the Future of Web3. With AI.",
+  "description": "Empower Web3 project teams with AI-assisted architecture, smart contract specifications, security vectors, and MVP roadmaps.",
+  "icons": {
+    "icon": "/logo-square.png"
+  },
   "robots": {
     "index": false
   },

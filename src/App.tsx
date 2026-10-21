@@ -1,41 +1,36 @@
 import { useEffect, useState } from "react"
-
 import { AppShell } from "./components/AppShell"
-
 import Analytics from "./pages/Analytics"
-
 import BuildEngine from "./pages/BuildEngine"
-
 import Campaigns from "./pages/Campaigns"
-
 import Community from "./pages/Community"
-
 import ContentStudio from "./pages/ContentStudio"
-
 import Kols from "./pages/Kols"
-
+import LandingPage from "./pages/LandingPage"
 import Overview from "./pages/Overview"
-
 import Project from "./pages/Project"
-
 import Settings from "./pages/Settings"
-
 import { defaultProject, type ProjectRecord } from "./data/projects"
 
 export default function App() {
+  const [view, setView] = useState<"landing" | "app">(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.toLowerCase()
+      if (hash.startsWith("#app")) return "app"
+    }
+    return "landing"
+  })
+
   const [page, setPage] = useState("Overview")
-
   const [collapsed, setCollapsed] = useState(false)
-
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const [theme, setTheme] = useState<"dark" | "light">(() => {
-    return localStorage.getItem("growth-os-theme") as "dark" | "light" || "dark"
+    return (localStorage.getItem("growth-os-theme") as "dark" | "light") || "dark"
   })
 
   const [projects, setProjects] = useState<ProjectRecord[]>(() => {
     const saved = localStorage.getItem("growth-os-projects")
-
     return saved ? JSON.parse(saved) : [defaultProject]
   })
 
@@ -48,25 +43,41 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-
     localStorage.setItem("growth-os-theme", theme)
   }, [theme])
 
   useEffect(() => {
     localStorage.setItem("growth-os-projects", JSON.stringify(projects))
-
     localStorage.setItem("growth-os-active-project", activeProjectId)
   }, [projects, activeProjectId])
 
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.toLowerCase()
+      if (hash.startsWith("#app")) {
+        setView("app")
+        if (hash.includes("build-engine")) {
+          setPage("Build Engine")
+        } else if (hash.includes("analytics")) {
+          setPage("Analytics")
+        } else if (hash.includes("community")) {
+          setPage("Community")
+        }
+      } else if (hash === "" || hash === "#") {
+        setView("landing")
+      }
+    }
+    window.addEventListener("hashchange", handleHash)
+    return () => window.removeEventListener("hashchange", handleHash)
+  }, [])
+
   const createProject = (project: ProjectRecord) => {
     setProjects((current) => [...current, project])
-
     setActiveProjectId(project.id)
   }
 
   const pages: Record<string, React.ReactNode> = {
     Overview: <Overview navigate={setPage} />,
-
     Project: (
       <Project
         projects={projects}
@@ -75,20 +86,27 @@ export default function App() {
         createProject={createProject}
       />
     ),
-
     Community: <Community />,
-
     "Content Studio": <ContentStudio />,
-
     KOLs: <Kols />,
-
     Campaigns: <Campaigns />,
-
     Analytics: <Analytics />,
-
     "Build Engine": <BuildEngine />,
-
     Settings: <Settings />,
+  }
+
+  if (view === "landing") {
+    return (
+      <LandingPage
+        theme={theme}
+        setTheme={setTheme}
+        onLaunchApp={(targetPage?: string) => {
+          if (targetPage) setPage(targetPage)
+          window.location.hash = "app"
+          setView("app")
+        }}
+      />
+    )
   }
 
   return (
@@ -102,6 +120,10 @@ export default function App() {
       theme={theme}
       setTheme={setTheme}
       activeProject={activeProject}
+      onGoToLanding={() => {
+        window.location.hash = ""
+        setView("landing")
+      }}
     >
       {pages[page]}
     </AppShell>

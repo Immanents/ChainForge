@@ -609,6 +609,44 @@ function figmaBlueprintProxy(): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (
+          req.method === "POST" &&
+          req.url?.split("?")[0] === "/api/early-access"
+        ) {
+          try {
+            const body = await new Promise<string>((resolve, reject) => {
+              let data = ""
+              req.on("data", (chunk: Buffer) => {
+                data += chunk.toString()
+              })
+              req.on("end", () => resolve(data))
+              req.on("error", reject)
+            })
+            const payload = JSON.parse(body || "{}")
+            res.statusCode = 200
+            res.setHeader("Content-Type", "application/json")
+            res.end(
+              JSON.stringify({
+                status: "received",
+                persisted: false,
+                message:
+                  "Request received in local preview registry. Production CRM integration is pending deployment.",
+                email: payload.email,
+                role: payload.role || "Builder",
+                stage: payload.stage || "Idea",
+                blockchain: payload.blockchain || "Agnostic",
+                timestamp: new Date().toISOString(),
+              }),
+            )
+            return
+          } catch {
+            res.statusCode = 400
+            res.setHeader("Content-Type", "application/json")
+            res.end(JSON.stringify({ error: "Invalid JSON payload" }))
+            return
+          }
+        }
+
+        if (
           req.method !== "POST" ||
           req.url?.split("?")[0] !== "/api/generate-blueprint"
         ) {

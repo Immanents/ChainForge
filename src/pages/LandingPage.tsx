@@ -56,7 +56,12 @@ export default function LandingPage({
 
     setSubmitting(true)
     try {
-      const res = await fetch("/api/early-access", {
+      const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "")
+      const endpoint = apiBase
+        ? `${apiBase}/early-access`
+        : "/api/early-access"
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -67,9 +72,23 @@ export default function LandingPage({
         }),
       })
 
+      if (!res.ok) {
+        let serverError = `Request failed (HTTP ${res.status})`
+        try {
+          const errJson = await res.json()
+          if (errJson && typeof errJson.error === "string") {
+            serverError = errJson.error
+          }
+        } catch {
+          // keep fallback
+        }
+        setFormError(serverError)
+        return
+      }
+
       const data = await res.json()
 
-      // Record in local storage for preview persistence
+      // Record in local storage for preview persistence (single write upon success)
       try {
         const stored = localStorage.getItem("chainforge-early-access-preview")
         const list = stored ? JSON.parse(stored) : []
@@ -85,7 +104,7 @@ export default function LandingPage({
           JSON.stringify(list),
         )
       } catch {
-        // LocalStorage fallback
+        // LocalStorage quota/access fallback
       }
 
       setSubmitResult({
@@ -97,34 +116,9 @@ export default function LandingPage({
         email: email.trim(),
       })
       setEmail("")
-    } catch {
-      // In case network fails, register locally and report transparently
-      try {
-        const stored = localStorage.getItem("chainforge-early-access-preview")
-        const list = stored ? JSON.parse(stored) : []
-        list.push({
-          email: email.trim(),
-          role,
-          stage,
-          blockchain,
-          timestamp: new Date().toISOString(),
-        })
-        localStorage.setItem(
-          "chainforge-early-access-preview",
-          JSON.stringify(list),
-        )
-      } catch {
-        // ignore
-      }
-
-      setSubmitResult({
-        success: true,
-        persisted: false,
-        message:
-          "Request captured in local browser session. Production database persistence is currently pending deployment.",
-        email: email.trim(),
-      })
-      setEmail("")
+    } catch (err: unknown) {
+      const networkError = err instanceof Error ? err.message : "Network error"
+      setFormError(`Unable to submit request: ${networkError}. Please check your connection and try again.`)
     } finally {
       setSubmitting(false)
     }
@@ -348,7 +342,7 @@ export default function LandingPage({
                     <Icon name="project" className="size-3" />
                     <span>nova-yield-blueprint.json</span>
                   </div>
-                  <Badge tone="cyan">Gemini 3.8 Flash</Badge>
+                  <Badge tone="cyan">AI Powered</Badge>
                 </div>
 
                 <div className="landing-preview-body">
@@ -669,9 +663,9 @@ export default function LandingPage({
                 <div className="landing-step-number">02</div>
                 <h3>Neural Engine Synthesis</h3>
                 <p>
-                  Gemini 3.8 Flash analyzes your parameters against Web3
-                  standards, compiling a multi-vector architectural specification
-                  with real-time progress feedback.
+                  AI analyzes your parameters against Web3 standards, compiling
+                  a multi-vector architectural specification with real-time
+                  progress feedback.
                 </p>
                 <div className="landing-step-tag">AI Compilation</div>
               </div>
@@ -738,7 +732,7 @@ export default function LandingPage({
                 <ul className="phase-list">
                   <li>
                     <Icon name="check" />
-                    <span>Gemini 3.8 Flash AI Blueprint Engine</span>
+                    <span>AI Powered Blueprint Engine</span>
                   </li>
                   <li>
                     <Icon name="check" />
@@ -1227,7 +1221,7 @@ export default function LandingPage({
               <div className="landing-footer-meta">
                 <span>Version 1.0 Beta</span>
                 <span className="dot-sep">·</span>
-                <span>Powered by Gemini 3.8 Flash</span>
+                <span>AI Powered</span>
               </div>
             </div>
 

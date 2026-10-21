@@ -7,6 +7,8 @@ import tailwindcss from "@tailwindcss/vite"
 import path from "node:path"
 
 import siteConfiguration from "./.figma/make/site.json"
+import { handleBlueprintRequest, INPUT_LIMITS } from "./server/blueprintHandler.ts"
+import { handleEarlyAccessRequest, EARLY_ACCESS_LIMITS } from "./server/earlyAccessHandler.ts"
 
 // Vite config — https://vitejs.dev/config/
 
@@ -595,10 +597,56 @@ function figmaMakeKitPlugin(options: {
 }
 
 /**
- * Server-side proxy for Gemini API blueprint generation.
+ * Server-side proxy for Gemini API blueprint generation and early access.
+ * Delegates to portable shared handlers in `server/`.
  * Keeps the API key out of client bundles — the key is read from
  * `process.env.VITE_GEMINI_API_KEY` only on the server.
  */
+
+function readJsonBody(
+  req: import("node:http").IncomingMessage,
+  maxBytes: number,
+): Promise<{ ok: true; data: unknown } | { ok: false; error: string; status: number }> {
+  return new Promise((resolve) => {
+    let size = 0
+    const chunks: Buffer[] = []
+    let tooLarge = false
+
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length
+      if (size > maxBytes) {
+        tooLarge = true
+        req.destroy()
+        resolve({
+          ok: false,
+          error: `Payload too large. Maximum size is ${Math.round(maxBytes / 1024)} KB.`,
+          status: 413,
+        })
+        return
+      }
+      chunks.push(chunk)
+    })
+
+    req.on("end", () => {
+      if (tooLarge) return
+      const raw = Buffer.concat(chunks).toString("utf8")
+      if (!raw.trim()) {
+        resolve({ ok: true, data: {} })
+        return
+      }
+      try {
+        const parsed = JSON.parse(raw)
+        resolve({ ok: true, data: parsed })
+      } catch {
+        resolve({ ok: false, error: "Invalid JSON payload.", status: 400 })
+      }
+    })
+
+    req.on("error", (err) => {
+      resolve({ ok: false, error: `Stream error: ${err.message}`, status: 400 })
+    })
+  })
+}
 
 function figmaBlueprintProxy(): Plugin {
   return {
@@ -608,180 +656,77 @@ function figmaBlueprintProxy(): Plugin {
 
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (
-          req.method === "POST" &&
-          req.url?.split("?")[0] === "/api/early-access"
-        ) {
-          try {
-            const body = await new Promise<string>((resolve, reject) => {
-              let data = ""
-              req.on("data", (chunk: Buffer) => {
-                data += chunk.toString()
-              })
-              req.on("end", () => resolve(data))
-              req.on("error", reject)
-            })
-            const payload = JSON.parse(body || "{}")
-            res.statusCode = 200
+        const path = req.url?.split("?")[0]
+
+        if (path === "/api/early-access") {
+          const bodyResult = await readJsonBody(req, EARLY_ACCESS_LIMITS.maxBodyBytes)
+          if (!bodyResult.ok) {
+            res.statusCode = bodyResult.status
             res.setHeader("Content-Type", "application/json")
-            res.end(
-              JSON.stringify({
-                status: "received",
-                persisted: false,
-                message:
-                  "Request received in local preview registry. Production CRM integration is pending deployment.",
-                email: payload.email,
-                role: payload.role || "Builder",
-                stage: payload.stage || "Idea",
-                blockchain: payload.blockchain || "Agnostic",
-                timestamp: new Date().toISOString(),
-              }),
-            )
-            return
-          } catch {
-            res.statusCode = 400
-            res.setHeader("Content-Type", "application/json")
-            res.end(JSON.stringify({ error: "Invalid JSON payload" }))
+            res.end(JSON.stringify({ error: bodyResult.error }))
             return
           }
-        }
 
-        if (
-          req.method !== "POST" ||
-          req.url?.split("?")[0] !== "/api/generate-blueprint"
-        ) {
-          return next()
-        }
+          const response = await handleEarlyAccessRequest({
+            method: req.method || "GET",
+            url: req.url,
+            headers: req.headers,
+            body: bodyResult.data,
+          })
 
-        const apiKey =
-          process.env.VITE_GEMINI_API_KEY ||
-          loadEnv("development", process.cwd(), "").VITE_GEMINI_API_KEY
-
-        if (!apiKey) {
-          res.statusCode = 500
-
-          res.setHeader("Content-Type", "text/plain")
-
-          res.end(
-            "VITE_GEMINI_API_KEY is not configured. Create a .env file with your Gemini API key.",
-          )
-
+          res.statusCode = response.status
+          if (response.headers) {
+            for (const [k, v] of Object.entries(response.headers)) {
+              res.setHeader(k, v)
+            }
+          }
+          res.end(JSON.stringify(response.body))
           return
         }
 
-        try {
-          const body = await new Promise<string>((resolve, reject) => {
-            let data = ""
+        if (path === "/api/generate-blueprint") {
+          const apiKey =
+            process.env.VITE_GEMINI_API_KEY ||
+            loadEnv("development", process.cwd(), "").VITE_GEMINI_API_KEY
 
-            req.on("data", (chunk: Buffer) => {
-              data += chunk.toString()
-            })
+          const openRouterApiKey =
+            process.env.OPENROUTER_API_KEY ||
+            loadEnv("development", process.cwd(), "").OPENROUTER_API_KEY
 
-            req.on("end", () => resolve(data))
+          const openRouterModel =
+            process.env.OPENROUTER_MODEL ||
+            loadEnv("development", process.cwd(), "").OPENROUTER_MODEL
 
-            req.on("error", reject)
-          })
-
-          const input = JSON.parse(body)
-
-          const prompt = buildBlueprintPrompt(input)
-
-          const { GoogleGenerativeAI } = await import("@google/generative-ai")
-
-          const genAI = new GoogleGenerativeAI(apiKey)
-
-          const model = genAI.getGenerativeModel({
-            model: "gemini-3.8-flash",
-
-            generationConfig: {
-              responseMimeType: "application/json",
-            },
-          })
-
-          const result = await model.generateContent(prompt)
-
-          const text = result.response.text()
-
-          // Validate the parsed JSON before sending
-
-          let parsed: unknown
-
-          try {
-            parsed = JSON.parse(text)
-          } catch {
-            res.statusCode = 502
-
-            res.setHeader("Content-Type", "text/plain")
-
-            res.end("The AI returned malformed JSON. Please try again.")
-
+          const bodyResult = await readJsonBody(req, INPUT_LIMITS.maxBodyBytes)
+          if (!bodyResult.ok) {
+            res.statusCode = bodyResult.status
+            res.setHeader("Content-Type", "application/json")
+            res.end(JSON.stringify({ error: bodyResult.error }))
             return
           }
 
-          res.setHeader("Content-Type", "application/json")
+          const response = await handleBlueprintRequest(
+            {
+              method: req.method || "GET",
+              url: req.url,
+              headers: req.headers,
+              body: bodyResult.data,
+            },
+            { apiKey, openRouterApiKey, openRouterModel },
+          )
 
-          res.end(JSON.stringify(parsed))
-        } catch (err: unknown) {
-          const message = err instanceof Error ? err.message : "Unknown error"
-
-          console.error("[Blueprint Proxy] Error:", message)
-
-          res.statusCode = 502
-
-          res.setHeader("Content-Type", "text/plain")
-
-          res.end(`Gemini API error: ${message}`)
+          res.statusCode = response.status
+          if (response.headers) {
+            for (const [k, v] of Object.entries(response.headers)) {
+              res.setHeader(k, v)
+            }
+          }
+          res.end(JSON.stringify(response.body))
+          return
         }
+
+        return next()
       })
     },
   }
-}
-
-function buildBlueprintPrompt(input: {
-  projectName: string
-
-  projectIdea: string
-
-  targetAudience: string
-
-  preferredBlockchain?: string
-
-  additionalContext?: string
-}): string {
-  return `You are a senior Web3 architect and product strategist. A founder has described a project idea below. Analyze it and produce a structured project blueprint.
-
-PROJECT DETAILS:
-- Name: ${input.projectName}
-- Idea and problem: ${input.projectIdea}
-- Target audience: ${input.targetAudience}
-${
-  input.preferredBlockchain
-    ? `- Preferred blockchain: ${input.preferredBlockchain}`
-    : "- No blockchain preference specified"
-}
-${
-  input.additionalContext
-    ? `- Additional context: ${input.additionalContext}`
-    : ""
-}
-
-Respond with a JSON object matching this exact schema (no markdown, no code fences, just valid JSON):
-
-{
-  "problemStatement": "A clear 2-3 sentence description of the core problem being addressed",
-  "targetUsers": "Specific description of who will use this and their primary needs",
-  "proposedSolution": "How the project solves the problem, including its unique approach (2-4 sentences)",
-  "coreMvpFeatures": ["Feature 1 with brief description", "Feature 2 with brief description", "...at least 4 and at most 8 features"],
-  "recommendedArchitecture": "Technical architecture overview covering frontend, backend, smart contracts, and infrastructure (2-4 sentences)",
-  "smartContractRequirements": "What smart contracts are needed, their purpose, and key functions. If no smart contracts are needed, explain why. Note: these are requirements only and must be professionally audited before deployment.",
-  "securityConsiderations": "Key security risks, mitigations, and assumptions. Include both smart contract security and platform security concerns.",
-  "openQuestions": ["Question 1 that the founder needs to decide", "Question 2", "...at least 3 and at most 6 questions"]
-}
-
-Important:
-- Be specific and actionable, not generic.
-- Ground recommendations in the project's actual domain and audience.
-- Never claim any smart contract code is production-ready or audited.
-- Identify real trade-offs and decisions the founder needs to make.
-- If the blockchain preference is unusual for the use case, note that in open questions.`
 }

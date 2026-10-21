@@ -94,7 +94,7 @@ export default function BuildEngine() {
         description="Transform your Web3 idea into a structured project blueprint powered by AI."
         actions={
           <div className="flex items-center gap-2">
-            <Badge tone="cyan">Gemini 3.8 Flash</Badge>
+            <Badge tone="cyan">AI Powered</Badge>
             {blueprints.length > 0 && (
               <Badge tone="brand">
                 {blueprints.length} blueprint{blueprints.length !== 1 ? "s" : ""}{" "}
@@ -472,7 +472,7 @@ function LoadingState({
         <div className="ai-synthesis-meta">
           <div className="ai-badge-row">
             <span className="ai-status-pulse" />
-            <Badge tone="brand">Gemini 3.8 Flash Neural Engine</Badge>
+            <Badge tone="brand">AI Powered Engine</Badge>
             {blockchain && <Badge tone="cyan">{blockchain}</Badge>}
           </div>
           <h3>Synthesizing blueprint for {projectName || "Web3 Project"}</h3>
@@ -602,7 +602,7 @@ function BlueprintDisplay({
               <Badge tone="brand">
                 {result.coreMvpFeatures.length} MVP Milestones
               </Badge>
-              <Badge tone="neutral">Gemini 3.8 Flash</Badge>
+              <Badge tone="neutral">AI Powered</Badge>
             </div>
           </div>
         </div>
@@ -825,7 +825,7 @@ function SavedTab({
         <EmptyState
           icon="project"
           title="No blueprints saved yet"
-          description="Synthesize your first project blueprint with Gemini AI in the Generate tab and save it to your local registry."
+          description="Synthesize your first project blueprint with AI in the Generate tab and save it to your local registry."
           action={
             <Button icon="sparkles" onClick={onGoToGenerate}>
               Generate a blueprint

@@ -6,7 +6,7 @@ import type { ProjectRecord } from "../data/projects"
 import { useAuth } from "../context/AuthContext"
 import { AccountStatusBanner } from "./auth/AccountStatusBanner"
 import { AuthModal } from "./auth/AuthModal"
-import brandLogo from "../assets/logo-square.png"
+import { BRAND_LOGO_DATA_URI } from "../assets/brandLogoData"
 
 export function AppShell({
   page,
@@ -77,16 +77,9 @@ export function AppShell({
       >
         <div className="brand">
           <img
-            src={brandLogo}
+            src={BRAND_LOGO_DATA_URI}
             alt="ChainForge Logo"
             className="brand-logo-img"
-            onError={(e) => {
-              // Graceful fallback to root public path if bundle hash lookup fails
-              const target = e.currentTarget
-              if (target.src !== "/logo-square.png") {
-                target.src = "/logo-square.png"
-              }
-            }}
           />
           {!collapsed && (
             <>

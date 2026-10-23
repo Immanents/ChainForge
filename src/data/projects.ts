@@ -16,6 +16,8 @@ export type ProjectRecord = {
   tokenSymbol: string
 
   createdAt: string
+
+  logoUrl?: string
 }
 
 export const defaultProject: ProjectRecord = {

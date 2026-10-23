@@ -10,7 +10,10 @@ import LandingPage from "./pages/LandingPage"
 import Overview from "./pages/Overview"
 import Project from "./pages/Project"
 import Settings from "./pages/Settings"
+import TokenWizard from "./pages/TokenWizard"
+import AdminDashboard from "./pages/AdminDashboard"
 import { defaultProject, type ProjectRecord } from "./data/projects"
+import { AuthProvider } from "./context/AuthContext"
 
 export default function App() {
   const [view, setView] = useState<"landing" | "app">(() => {
@@ -76,6 +79,12 @@ export default function App() {
     setActiveProjectId(project.id)
   }
 
+  const updateProject = (updated: ProjectRecord) => {
+    setProjects((current) =>
+      current.map((p) => (p.id === updated.id ? updated : p))
+    )
+  }
+
   const pages: Record<string, React.ReactNode> = {
     Overview: <Overview navigate={setPage} />,
     Project: (
@@ -84,6 +93,7 @@ export default function App() {
         activeProject={activeProject}
         setActiveProjectId={setActiveProjectId}
         createProject={createProject}
+        updateProject={updateProject}
       />
     ),
     Community: <Community />,
@@ -92,40 +102,42 @@ export default function App() {
     Campaigns: <Campaigns />,
     Analytics: <Analytics />,
     "Build Engine": <BuildEngine />,
+    "Token Studio": <TokenWizard />,
+    "Waitlist Admin": <AdminDashboard />,
     Settings: <Settings />,
   }
 
-  if (view === "landing") {
-    return (
-      <LandingPage
-        theme={theme}
-        setTheme={setTheme}
-        onLaunchApp={(targetPage?: string) => {
-          if (targetPage) setPage(targetPage)
-          window.location.hash = "app"
-          setView("app")
-        }}
-      />
-    )
-  }
-
   return (
-    <AppShell
-      page={page}
-      setPage={setPage}
-      collapsed={collapsed}
-      setCollapsed={setCollapsed}
-      mobileOpen={mobileOpen}
-      setMobileOpen={setMobileOpen}
-      theme={theme}
-      setTheme={setTheme}
-      activeProject={activeProject}
-      onGoToLanding={() => {
-        window.location.hash = ""
-        setView("landing")
-      }}
-    >
-      {pages[page]}
-    </AppShell>
+    <AuthProvider>
+      {view === "landing" ? (
+        <LandingPage
+          theme={theme}
+          setTheme={setTheme}
+          onLaunchApp={(targetPage?: string) => {
+            if (targetPage) setPage(targetPage)
+            window.location.hash = "app"
+            setView("app")
+          }}
+        />
+      ) : (
+        <AppShell
+          page={page}
+          setPage={setPage}
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+          theme={theme}
+          setTheme={setTheme}
+          activeProject={activeProject}
+          onGoToLanding={() => {
+            window.location.hash = ""
+            setView("landing")
+          }}
+        >
+          {pages[page]}
+        </AppShell>
+      )}
+    </AuthProvider>
   )
 }

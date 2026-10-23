@@ -3,6 +3,7 @@ import {
   type BlueprintInput,
   type BlueprintResult,
 } from "../data/blueprints"
+import { getAuthHeaders } from "./supabaseClient"
 
 export class GeminiError extends Error {
   constructor(
@@ -28,9 +29,13 @@ export async function generateBlueprint(
   const timer = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS)
 
   try {
+    const authHeaders = await getAuthHeaders()
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
       body: JSON.stringify(input),
       signal: controller.signal,
     })

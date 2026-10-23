@@ -20,6 +20,9 @@ import {
   type BlueprintResult,
 } from "../data/blueprints"
 import { generateBlueprint, GeminiError } from "../services/gemini"
+import { DeployModal } from "../components/web3/DeployModal"
+import { useAuth } from "../context/AuthContext"
+import { getAuthHeaders } from "../services/supabaseClient"
 
 const PRESET_IDEAS: Array<{
   name: string
@@ -138,6 +141,8 @@ export default function BuildEngine() {
 }
 
 function GenerateTab({ onSaved }: { onSaved: () => void }) {
+  const { user, profile, creditsBalance, refreshProfile, openAuthModal } = useAuth()
+
   const [input, setInput] = useState<BlueprintInput>({
     projectName: "",
     projectIdea: "",
@@ -198,6 +203,23 @@ function GenerateTab({ onSaved }: { onSaved: () => void }) {
 
   const handleGenerate = async () => {
     if (!validate()) return
+
+    if (!user) {
+      openAuthModal("signin")
+      setApiError("Authentication required: Please sign in or register with an invitation code to generate AI blueprints.")
+      return
+    }
+
+    if (profile?.status !== "active") {
+      setApiError(`Account status is ${profile?.status || "pending"}. An active commercial subscription or redeemed invitation code is required.`)
+      return
+    }
+
+    if (creditsBalance < 10) {
+      setApiError(`Insufficient credits. AI Blueprint generation requires 10 credits (current balance: ${creditsBalance}).`)
+      return
+    }
+
     setLoading(true)
     setApiError("")
     setResult(null)
@@ -205,6 +227,7 @@ function GenerateTab({ onSaved }: { onSaved: () => void }) {
     try {
       const blueprintResult = await generateBlueprint(input)
       setResult(blueprintResult)
+      await refreshProfile()
     } catch (err) {
       if (err instanceof GeminiError) {
         setApiError(err.message)
@@ -560,7 +583,23 @@ function BlueprintDisplay({
   saved?: boolean
   onReset?: () => void
 }) {
+  const { user, profile, creditsBalance, refreshProfile, openAuthModal } = useAuth()
   const [copied, setCopied] = useState(false)
+  const [generatingCodebase, setGeneratingCodebase] = useState(false)
+  const [codebaseProgress, setCodebaseProgress] = useState("")
+  const [codebaseError, setCodebaseError] = useState<string | null>(null)
+  const [codebaseResult, setCodebaseResult] = useState<{
+    projectName: string
+    ecosystem: "evm" | "solana"
+    framework: string
+    files: Array<{ path: string; content: string }>
+    fileManifest: string[]
+    artifactSha256: string
+    zipBase64: string
+    modelProviderUsed: string
+  } | null>(null)
+  const [selectedFileIndex, setSelectedFileIndex] = useState(0)
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false)
 
   const handleCopyMarkdown = () => {
     const md = formatBlueprintMarkdown({ input, result })
@@ -580,6 +619,75 @@ function BlueprintDisplay({
     const a = document.createElement("a")
     a.href = url
     a.download = `${(input?.projectName || "blueprint").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-blueprint.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleGenerateCodebase = async (ecosystemChoice: "evm" | "solana") => {
+    if (!user) {
+      openAuthModal("signin")
+      setCodebaseError("Authentication required: Please sign in or register with an invitation code to synthesize full Web3 codebases.")
+      return
+    }
+
+    if (profile?.status !== "active") {
+      setCodebaseError(`Account status is ${profile?.status || "pending"}. An active commercial subscription or redeemed invitation code is required.`)
+      return
+    }
+
+    if (creditsBalance < 25) {
+      setCodebaseError(`Insufficient credits. Full codebase generation requires 25 credits (current balance: ${creditsBalance}).`)
+      return
+    }
+
+    setGeneratingCodebase(true)
+    setCodebaseError(null)
+    setCodebaseProgress("Synthesizing multi-file project files from approved blueprint...")
+
+    try {
+      const authHeaders = await getAuthHeaders()
+      const res = await fetch("/api/generate-codebase", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
+        body: JSON.stringify({
+          projectName: input?.projectName || "Web3Project",
+          ecosystem: ecosystemChoice,
+          blueprint: result,
+        }),
+      })
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.error || `Codebase generation failed (HTTP ${res.status})`)
+      }
+
+      const data = await res.json()
+      setCodebaseResult(data)
+      setSelectedFileIndex(0)
+      await refreshProfile()
+    } catch (err: unknown) {
+      setCodebaseError(err instanceof Error ? err.message : "Codebase generation failed")
+    } finally {
+      setGeneratingCodebase(false)
+      setCodebaseProgress("")
+    }
+  }
+
+  const handleDownloadZip = () => {
+    if (!codebaseResult?.zipBase64) return
+    const binary = atob(codebaseResult.zipBase64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    const blob = new Blob([bytes], { type: "application/zip" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${(input?.projectName || "project").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-codebase.zip`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -608,6 +716,15 @@ function BlueprintDisplay({
         </div>
 
         <div className="blueprint-actions">
+          <Button
+            icon="sparkles"
+            variant="primary"
+            size="sm"
+            onClick={() => handleGenerateCodebase(input?.preferredBlockchain?.toLowerCase().includes("solana") ? "solana" : "evm")}
+            disabled={generatingCodebase}
+          >
+            {generatingCodebase ? "Synthesizing..." : "Generate Codebase"}
+          </Button>
           <Button
             icon={copied ? "check" : "copy"}
             variant="secondary"
@@ -643,6 +760,109 @@ function BlueprintDisplay({
           )}
         </div>
       </Card>
+
+      {/* Codebase Synthesis Progress */}
+      {generatingCodebase && (
+        <Card className="settings-card border-brand/40 bg-brand/5 my-4">
+          <div className="flex items-center gap-3">
+            <span className="animate-spin text-brand text-lg">⚙</span>
+            <div>
+              <h4 className="text-sm font-semibold text-brand">Synthesizing Project Codebase</h4>
+              <p className="text-xs text-muted">{codebaseProgress}</p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {codebaseError && (
+        <div className="p-3 bg-red-900/30 border border-red-500/40 rounded text-red-400 text-xs my-4">
+          {codebaseError}
+        </div>
+      )}
+
+      {/* Codebase Project Workspace (File Tree & Source Viewer) */}
+      {codebaseResult && (
+        <Card className="settings-card border-emerald-500/40 bg-[#0d1117] my-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border/80 gap-3">
+            <div className="flex items-center gap-2">
+              <Icon name="code" className="size-4 text-emerald-400" />
+              <h3 className="text-sm font-semibold">
+                Project Codebase: {codebaseResult.projectName} ({codebaseResult.framework.toUpperCase()})
+              </h3>
+              <Badge tone="success">{codebaseResult.files.length} Files</Badge>
+              <Badge tone="neutral">SHA-256: {codebaseResult.artifactSha256.slice(0, 8)}...</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon="download"
+                onClick={handleDownloadZip}
+              >
+                Download ZIP
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                icon="rocket"
+                onClick={() => setIsDeployModalOpen(true)}
+              >
+                Deploy to Network
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mt-4">
+            {/* File Tree List */}
+            <div className="md:col-span-4 bg-[#161b22]/70 rounded-lg p-2 border border-border/60 max-h-96 overflow-y-auto">
+              <span className="text-xs font-semibold text-muted px-2 py-1 block">File Explorer</span>
+              <div className="space-y-1">
+                {codebaseResult.files.map((file, idx) => (
+                  <button
+                    key={file.path}
+                    onClick={() => setSelectedFileIndex(idx)}
+                    className={`w-full text-left px-2 py-1.5 rounded text-xs font-mono transition-colors flex items-center gap-2 ${
+                      selectedFileIndex === idx
+                        ? "bg-brand/20 text-brand font-semibold"
+                        : "text-muted hover:text-foreground hover:bg-muted/10"
+                    }`}
+                  >
+                    <span>📄</span>
+                    <span className="truncate">{file.path}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Code Content Viewer */}
+            <div className="md:col-span-8 bg-[#090d13] rounded-lg p-3 border border-border/40 max-h-96 overflow-auto">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/40 text-xs font-mono text-muted">
+                <span>{codebaseResult.files[selectedFileIndex]?.path}</span>
+                <span className="text-[10px]">
+                  {codebaseResult.files[selectedFileIndex]?.content.split("\n").length} lines
+                </span>
+              </div>
+              <pre className="text-xs font-mono text-emerald-400 whitespace-pre overflow-x-auto">
+                {codebaseResult.files[selectedFileIndex]?.content}
+              </pre>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Non-custodial Deploy Modal */}
+      <DeployModal
+        isOpen={isDeployModalOpen}
+        onClose={() => setIsDeployModalOpen(false)}
+        contractName={input?.projectName || "CustomContract"}
+        contractType="custom_contract"
+        ecosystem={codebaseResult?.ecosystem || "evm"}
+        artifactSha256={codebaseResult?.artifactSha256}
+        bytecodeOrInstruction="0x608060405234801561001057600080fd5b5060405161012038038061012083398101604081905261002f91610060565b"
+        onDeploySuccess={() => {
+          alert("Contract deployment transaction confirmed on-chain!")
+        }}
+      />
 
       <div className="blueprint-disclaimer">
         <Icon name="shield" />

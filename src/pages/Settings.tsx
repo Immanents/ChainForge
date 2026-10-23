@@ -14,35 +14,32 @@ import {
   Tabs,
   Toggle,
 } from "../components/ui"
+import { BillingSettings } from "../components/billing/BillingSettings"
 
 export default function Settings() {
-  const [tab, setTab] = useState("Workspace")
+  const [tab, setTab] = useState("Billing")
 
   return (
     <div className="page">
       <PageHeading
-        title="Settings"
-        description="Manage your workspace, team, integrations and AI preferences."
+        title="Settings & Subscriptions"
+        description="Manage your workspace, commercial subscriptions, team seats, integrations, and AI preferences."
       />
       <Tabs
         items={[
+          "Billing",
           "Workspace",
-
           "Project",
-
           "Team",
-
           "Notifications",
-
           "Integrations",
-
           "AI Configuration",
-
           "Security",
         ]}
         active={tab}
         onChange={setTab}
       />
+      {tab === "Billing" && <BillingSettings />}
       {tab === "Workspace" && <Workspace />}
       {tab === "Project" && <Workspace project />}
       {tab === "Team" && <Team />}

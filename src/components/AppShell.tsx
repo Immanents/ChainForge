@@ -1,12 +1,11 @@
 import type { ReactNode } from "react"
-
 import { navItems } from "../data/mockData"
-
 import { Icon, type IconName } from "./Icons"
-
-import { Avatar, Button } from "./ui"
-
+import { Avatar, Badge, Button } from "./ui"
 import type { ProjectRecord } from "../data/projects"
+import { useAuth } from "../context/AuthContext"
+import { AccountStatusBanner } from "./auth/AccountStatusBanner"
+import { AuthModal } from "./auth/AuthModal"
 
 export function AppShell({
   page,
@@ -53,6 +52,8 @@ export function AppShell({
 
   children: ReactNode
 }) {
+  const { user, profile, creditsBalance, signOut, openAuthModal } = useAuth()
+
   const navigate = (item: string) => {
     setPage(item)
 
@@ -108,6 +109,16 @@ export function AppShell({
             </button>
           ))}
           <div className="nav-divider" />
+          {profile?.role === "admin" && (
+            <button
+              className={`nav-item ${page === "Waitlist Admin" ? "active" : ""}`}
+              onClick={() => navigate("Waitlist Admin")}
+            >
+              <Icon name="shield" />
+              {!collapsed && <span>Admin Console</span>}
+              {page === "Waitlist Admin" && !collapsed && <i />}
+            </button>
+          )}
           <button
             className={`nav-item ${page === "Settings" ? "active" : ""}`}
             onClick={() => navigate("Settings")}
@@ -118,7 +129,10 @@ export function AppShell({
           {onGoToLanding && (
             <button
               className="nav-item"
-              onClick={onGoToLanding}
+              onClick={() => {
+                setMobileOpen(false)
+                onGoToLanding()
+              }}
               title="Return to Landing Page"
             >
               <Icon name="globe" />
@@ -127,8 +141,22 @@ export function AppShell({
           )}
         </nav>
         <div className="sidebar-bottom">
-          <button className="workspace-card" onClick={() => setPage("Project")}>
-            <span className="nova-logo">{activeProject.name[0]}</span>
+          <button
+            className="workspace-card"
+            onClick={() => {
+              setPage("Project")
+              setMobileOpen(false)
+            }}
+          >
+            {activeProject.logoUrl ? (
+              <img
+                src={activeProject.logoUrl}
+                alt={activeProject.name}
+                className="nova-logo object-cover"
+              />
+            ) : (
+              <span className="nova-logo">{activeProject.name[0]}</span>
+            )}
             {!collapsed && (
               <>
                 <span>
@@ -139,12 +167,22 @@ export function AppShell({
               </>
             )}
           </button>
-          <button className="profile-card">
-            <Avatar name="Maya Chen" size="sm" />
+          <button
+            className="profile-card"
+            onClick={() => {
+              if (user) {
+                setPage("Settings")
+              } else {
+                openAuthModal("signin")
+              }
+              setMobileOpen(false)
+            }}
+          >
+            <Avatar name={profile?.full_name || user?.email || "Guest User"} size="sm" />
             {!collapsed && (
               <span>
-                <strong>Maya Chen</strong>
-                <small>Growth Lead</small>
+                <strong className="truncate max-w-[130px] block">{profile?.full_name || (user?.email ? user.email.split("@")[0] : "Guest User")}</strong>
+                <small className="capitalize">{user ? `${profile?.plan || "free"} (${profile?.status || "pending"})` : "Sign In to Access"}</small>
               </span>
             )}
           </button>
@@ -166,14 +204,23 @@ export function AppShell({
             <Button
               variant="ghost"
               size="icon"
-              icon="menu"
+              icon={mobileOpen ? "close" : "menu"}
               className="mobile-menu"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
             />
             <strong>{page}</strong>
             <span className="header-divider" />
             <button className="project-pill" onClick={() => setPage("Project")}>
-              <span className="nova-logo small">{activeProject.name[0]}</span>
+              {activeProject.logoUrl ? (
+                <img
+                  src={activeProject.logoUrl}
+                  alt={activeProject.name}
+                  className="nova-logo small object-cover"
+                />
+              ) : (
+                <span className="nova-logo small">{activeProject.name[0]}</span>
+              )}
               <span>{activeProject.name}</span>
               <Icon name="chevron" className="size-3 rotate-90" />
             </button>
@@ -205,17 +252,51 @@ export function AppShell({
                 theme === "dark" ? "light" : "dark"
               } mode`}
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              icon="bell"
-              className="notification-btn"
-            />
-            <Avatar name="Maya Chen" size="sm" />
+            {user ? (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-brand/15 text-brand-bright border border-brand/30">
+                  <Icon name="sparkles" className="size-3.5 text-brand-bright" />
+                  <span>{creditsBalance} Credits</span>
+                </span>
+                <span className="hidden sm:inline-flex uppercase text-[10px] tracking-wider px-2 py-0.5 rounded font-mono font-bold bg-white/10 text-text-secondary border border-border">
+                  {profile?.plan?.replace("_", " ") || "Free"}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => signOut()}
+                  className="text-xs text-text-muted hover:text-red-400"
+                  title="Sign out of your account"
+                >
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openAuthModal("signin")}
+                  className="text-xs font-medium"
+                >
+                  Sign In
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => openAuthModal("signup")}
+                  className="text-xs font-medium"
+                >
+                  Get Access
+                </Button>
+              </div>
+            )}
           </div>
         </header>
+        <AccountStatusBanner />
         <main className="main-content">{children}</main>
       </div>
+      <AuthModal />
     </div>
   )
 }

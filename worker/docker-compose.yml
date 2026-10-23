@@ -1,0 +1,36 @@
+# worker/docker-compose.yml
+# Sandboxed compilation worker deployment definition with resource limits
+
+version: "3.8"
+
+services:
+  chainforge-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chainforge-build-worker
+    restart: on-failure
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL:-https://zrxgkyhzqdyyqtsmwixy.supabase.co}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - POLL_INTERVAL_MS=3000
+      - MAX_BUILD_TIMEOUT_SEC=120
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    read_only: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1024m

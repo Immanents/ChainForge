@@ -7,8 +7,7 @@ import tailwindcss from "@tailwindcss/vite"
 import path from "node:path"
 
 import siteConfiguration from "./.figma/make/site.json"
-import { handleBlueprintRequest, INPUT_LIMITS } from "./server/blueprintHandler.ts"
-import { handleEarlyAccessRequest, EARLY_ACCESS_LIMITS } from "./server/earlyAccessHandler.ts"
+import { handleApiRoute } from "./server/apiRouter.ts"
 
 // Vite config — https://vitejs.dev/config/
 
@@ -51,11 +50,15 @@ export default defineConfig(({ mode }) => {
     },
 
     server: {
-      host: process.env.FIGMA_DEV_SERVER_HOST || "0.0.0.0",
+      host: "0.0.0.0",
 
       port: parseInt(process.env.PORT || "5173"),
 
       strictPort: true,
+
+      cors: true,
+
+      allowedHosts: true,
 
       watch: {
         ignored: ["**/.figma/**"],
@@ -603,51 +606,6 @@ function figmaMakeKitPlugin(options: {
  * `process.env.VITE_GEMINI_API_KEY` only on the server.
  */
 
-function readJsonBody(
-  req: import("node:http").IncomingMessage,
-  maxBytes: number,
-): Promise<{ ok: true; data: unknown } | { ok: false; error: string; status: number }> {
-  return new Promise((resolve) => {
-    let size = 0
-    const chunks: Buffer[] = []
-    let tooLarge = false
-
-    req.on("data", (chunk: Buffer) => {
-      size += chunk.length
-      if (size > maxBytes) {
-        tooLarge = true
-        req.destroy()
-        resolve({
-          ok: false,
-          error: `Payload too large. Maximum size is ${Math.round(maxBytes / 1024)} KB.`,
-          status: 413,
-        })
-        return
-      }
-      chunks.push(chunk)
-    })
-
-    req.on("end", () => {
-      if (tooLarge) return
-      const raw = Buffer.concat(chunks).toString("utf8")
-      if (!raw.trim()) {
-        resolve({ ok: true, data: {} })
-        return
-      }
-      try {
-        const parsed = JSON.parse(raw)
-        resolve({ ok: true, data: parsed })
-      } catch {
-        resolve({ ok: false, error: "Invalid JSON payload.", status: 400 })
-      }
-    })
-
-    req.on("error", (err) => {
-      resolve({ ok: false, error: `Stream error: ${err.message}`, status: 400 })
-    })
-  })
-}
-
 function figmaBlueprintProxy(): Plugin {
   return {
     name: "figma-blueprint-proxy",
@@ -657,74 +615,10 @@ function figmaBlueprintProxy(): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const path = req.url?.split("?")[0]
-
-        if (path === "/api/early-access") {
-          const bodyResult = await readJsonBody(req, EARLY_ACCESS_LIMITS.maxBodyBytes)
-          if (!bodyResult.ok) {
-            res.statusCode = bodyResult.status
-            res.setHeader("Content-Type", "application/json")
-            res.end(JSON.stringify({ error: bodyResult.error }))
-            return
-          }
-
-          const response = await handleEarlyAccessRequest({
-            method: req.method || "GET",
-            url: req.url,
-            headers: req.headers,
-            body: bodyResult.data,
-          })
-
-          res.statusCode = response.status
-          if (response.headers) {
-            for (const [k, v] of Object.entries(response.headers)) {
-              res.setHeader(k, v)
-            }
-          }
-          res.end(JSON.stringify(response.body))
-          return
+        if (path?.startsWith("/api/")) {
+          const handled = await handleApiRoute(req, res)
+          if (handled) return
         }
-
-        if (path === "/api/generate-blueprint") {
-          const apiKey =
-            process.env.VITE_GEMINI_API_KEY ||
-            loadEnv("development", process.cwd(), "").VITE_GEMINI_API_KEY
-
-          const openRouterApiKey =
-            process.env.OPENROUTER_API_KEY ||
-            loadEnv("development", process.cwd(), "").OPENROUTER_API_KEY
-
-          const openRouterModel =
-            process.env.OPENROUTER_MODEL ||
-            loadEnv("development", process.cwd(), "").OPENROUTER_MODEL
-
-          const bodyResult = await readJsonBody(req, INPUT_LIMITS.maxBodyBytes)
-          if (!bodyResult.ok) {
-            res.statusCode = bodyResult.status
-            res.setHeader("Content-Type", "application/json")
-            res.end(JSON.stringify({ error: bodyResult.error }))
-            return
-          }
-
-          const response = await handleBlueprintRequest(
-            {
-              method: req.method || "GET",
-              url: req.url,
-              headers: req.headers,
-              body: bodyResult.data,
-            },
-            { apiKey, openRouterApiKey, openRouterModel },
-          )
-
-          res.statusCode = response.status
-          if (response.headers) {
-            for (const [k, v] of Object.entries(response.headers)) {
-              res.setHeader(k, v)
-            }
-          }
-          res.end(JSON.stringify(response.body))
-          return
-        }
-
         return next()
       })
     },

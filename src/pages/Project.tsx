@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 
 import { Icon } from "../components/Icons"
 
@@ -22,6 +22,8 @@ type Props = {
   setActiveProjectId: (id: string) => void
 
   createProject: (project: ProjectRecord) => void
+
+  updateProject?: (project: ProjectRecord) => void
 }
 
 export default function Project({
@@ -32,6 +34,8 @@ export default function Project({
   setActiveProjectId,
 
   createProject,
+
+  updateProject,
 }: Props) {
   const [view, setView] = useState<"connected" | "setup" | "create">(
     "connected",
@@ -83,7 +87,15 @@ export default function Project({
       />
       <div className="project-toolbar">
         <div>
-          <span className="nova-logo">{activeProject.name[0]}</span>
+          {activeProject.logoUrl ? (
+            <img
+              src={activeProject.logoUrl}
+              alt={activeProject.name}
+              className="nova-logo object-cover"
+            />
+          ) : (
+            <span className="nova-logo">{activeProject.name[0]}</span>
+          )}
           <div>
             <strong>{activeProject.name}</strong>
             <small>
@@ -101,13 +113,145 @@ export default function Project({
       {view === "setup" ? (
         <SetupState project={activeProject} done={() => setView("connected")} />
       ) : (
-        <ConnectedState project={activeProject} />
+        <ConnectedState project={activeProject} updateProject={updateProject} />
       )}
     </div>
   )
 }
 
-function ConnectedState({ project }: { project: ProjectRecord }) {
+function ConnectedState({
+  project,
+  updateProject,
+}: {
+  project: ProjectRecord
+  updateProject?: (project: ProjectRecord) => void
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [name, setName] = useState(project.name)
+  const [category, setCategory] = useState(project.category)
+  const [description, setDescription] = useState(project.description)
+  const [website, setWebsite] = useState(project.website)
+  const [audience, setAudience] = useState(project.audience)
+  const [status, setStatus] = useState<ProjectRecord["status"]>(project.status)
+  const [tokenSymbol, setTokenSymbol] = useState(project.tokenSymbol)
+  const [logoUrl, setLogoUrl] = useState(project.logoUrl || "")
+  const [uploadError, setUploadError] = useState("")
+  const [savedSuccess, setSavedSuccess] = useState(false)
+  const [showUrlInput, setShowUrlInput] = useState(false)
+  const [customUrl, setCustomUrl] = useState("")
+
+  useEffect(() => {
+    setName(project.name)
+    setCategory(project.category)
+    setDescription(project.description)
+    setWebsite(project.website)
+    setAudience(project.audience)
+    setStatus(project.status)
+    setTokenSymbol(project.tokenSymbol)
+    setLogoUrl(project.logoUrl || "")
+    setUploadError("")
+    setSavedSuccess(false)
+  }, [project.id])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError("Image must be smaller than 2MB")
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please upload a valid image (PNG, JPG, SVG, WebP)")
+      return
+    }
+
+    setUploadError("")
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string
+      if (dataUrl) {
+        setLogoUrl(dataUrl)
+        if (updateProject) {
+          updateProject({
+            ...project,
+            name,
+            category,
+            description,
+            website,
+            audience,
+            status,
+            tokenSymbol,
+            logoUrl: dataUrl,
+          })
+          setSavedSuccess(true)
+          setTimeout(() => setSavedSuccess(false), 3000)
+        }
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveLogo = () => {
+    setLogoUrl("")
+    if (fileInputRef.current) fileInputRef.current.value = ""
+    if (updateProject) {
+      updateProject({
+        ...project,
+        name,
+        category,
+        description,
+        website,
+        audience,
+        status,
+        tokenSymbol,
+        logoUrl: undefined,
+      })
+      setSavedSuccess(true)
+      setTimeout(() => setSavedSuccess(false), 3000)
+    }
+  }
+
+  const handleApplyUrl = () => {
+    if (!customUrl.trim()) return
+    setLogoUrl(customUrl.trim())
+    setShowUrlInput(false)
+    if (updateProject) {
+      updateProject({
+        ...project,
+        name,
+        category,
+        description,
+        website,
+        audience,
+        status,
+        tokenSymbol,
+        logoUrl: customUrl.trim(),
+      })
+      setSavedSuccess(true)
+      setTimeout(() => setSavedSuccess(false), 3000)
+    }
+  }
+
+  const handleSaveChanges = () => {
+    if (updateProject) {
+      updateProject({
+        ...project,
+        name: name.trim() || project.name,
+        category,
+        description: description.trim(),
+        website: website.trim(),
+        audience: audience.trim(),
+        status,
+        tokenSymbol: tokenSymbol.trim().toUpperCase(),
+        logoUrl: logoUrl || undefined,
+      })
+      setSavedSuccess(true)
+      setTimeout(() => setSavedSuccess(false), 3000)
+    }
+  }
+
   return (
     <>
       <div className="project-layout">
@@ -117,23 +261,83 @@ function ConnectedState({ project }: { project: ProjectRecord }) {
             description="Core context used throughout ChainForge"
           />
           <div className="logo-upload">
-            <span className="nova-logo large">{project.name[0]}</span>
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={name}
+                className="nova-logo large object-cover"
+              />
+            ) : (
+              <span className="nova-logo large">{name ? name[0] : project.name[0]}</span>
+            )}
             <div>
               <strong>Project logo</strong>
-              <small>PNG, JPG or SVG · Max 2MB</small>
-              <Button variant="secondary" size="sm">
-                Change logo
-              </Button>
+              <small>PNG, JPG, SVG or WebP · Max 2MB</small>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+                  className="hidden"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Upload logo
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowUrlInput(!showUrlInput)}
+                >
+                  {showUrlInput ? "Cancel URL" : "Image URL"}
+                </Button>
+                {logoUrl && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveLogo}
+                    className="text-red-400 hover:text-red-300"
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              {uploadError && (
+                <p className="text-[10px] text-red-400 mt-1">{uploadError}</p>
+              )}
+              {showUrlInput && (
+                <div className="flex items-center gap-2 mt-2 w-full max-w-sm">
+                  <Input
+                    placeholder="https://... or ipfs://..."
+                    value={customUrl}
+                    onChange={(e) => setCustomUrl(e.target.value)}
+                    className="text-xs py-1"
+                  />
+                  <Button size="sm" onClick={handleApplyUrl}>
+                    Apply
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
           <div className="field-row">
             <label className="field">
               <span>Project name</span>
-              <Input defaultValue={project.name} key={project.id + "name"} />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </label>
             <label className="field">
               <span>Category</span>
-              <Select defaultValue={project.category} key={project.id + "cat"}>
+              <Select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
                 <option>Infrastructure</option>
                 <option>DeFi</option>
                 <option>L2</option>
@@ -147,29 +351,32 @@ function ConnectedState({ project }: { project: ProjectRecord }) {
             <textarea
               className="textarea"
               rows={4}
-              defaultValue={project.description}
-              key={project.id + "desc"}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
           </label>
           <label className="field">
             <span>Website</span>
             <Input
-              defaultValue={project.website}
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
               icon="globe"
-              key={project.id + "web"}
             />
           </label>
           <label className="field">
             <span>Target audience</span>
             <Input
-              defaultValue={project.audience}
-              key={project.id + "audience"}
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
             />
           </label>
           <div className="field-row">
             <label className="field">
               <span>Status</span>
-              <Select defaultValue={project.status}>
+              <Select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as ProjectRecord["status"])}
+              >
                 <option>Production</option>
                 <option>Testnet</option>
                 <option>Pre-launch</option>
@@ -178,12 +385,21 @@ function ConnectedState({ project }: { project: ProjectRecord }) {
             <label className="field">
               <span>Token symbol</span>
               <Input
-                defaultValue={project.tokenSymbol}
-                key={project.id + "token"}
+                value={tokenSymbol}
+                onChange={(e) => setTokenSymbol(e.target.value)}
               />
             </label>
           </div>
-          <Button icon="check">Save changes</Button>
+          <div className="flex items-center gap-3 mt-2">
+            <Button icon="check" onClick={handleSaveChanges}>
+              Save changes
+            </Button>
+            {savedSuccess && (
+              <Badge tone="success">
+                ✓ Changes saved successfully!
+              </Badge>
+            )}
+          </div>
         </Card>
         <Card className="project-context">
           <SectionHeading
@@ -191,21 +407,29 @@ function ConnectedState({ project }: { project: ProjectRecord }) {
             description="Optional market and ecosystem context"
           />
           <div className="token-summary">
-            <span className="nova-logo">{project.name[0]}</span>
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={name}
+                className="nova-logo object-cover"
+              />
+            ) : (
+              <span className="nova-logo">{name ? name[0] : project.name[0]}</span>
+            )}
             <div>
-              <strong>{project.name} Token</strong>
-              <small>{project.tokenSymbol || "No token"} · Ethereum</small>
+              <strong>{name} Token</strong>
+              <small>{tokenSymbol || "No token"} · Ethereum</small>
             </div>
-            <Badge tone={project.tokenSymbol ? "success" : "neutral"}>
-              {project.tokenSymbol ? "Live" : "Not configured"}
+            <Badge tone={tokenSymbol ? "success" : "neutral"}>
+              {tokenSymbol ? "Live" : "Not configured"}
             </Badge>
           </div>
           {[
-            ["Contract", project.tokenSymbol ? "0x7b4...29Ac" : "—"],
+            ["Contract", tokenSymbol ? "0x7b4...29Ac" : "—"],
 
-            ["Token type", project.tokenSymbol ? "Utility & governance" : "—"],
+            ["Token type", tokenSymbol ? "Utility & governance" : "—"],
 
-            ["Project status", project.status],
+            ["Project status", status],
 
             ["Created", new Date(project.createdAt).toLocaleDateString()],
           ].map((item) => (
@@ -238,8 +462,89 @@ function ConnectedState({ project }: { project: ProjectRecord }) {
           ))}
         </Card>
       </div>
+
+      <DeploymentsRegistry projectId={project.id} />
+
       <Connections />
     </>
+  )
+}
+
+function DeploymentsRegistry({ projectId }: { projectId: string }) {
+  const [deployments, setDeployments] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/deployments")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setDeployments(data)
+      })
+      .catch((err) => console.warn("Failed to load deployments:", err))
+      .finally(() => setLoading(false))
+  }, [projectId])
+
+  return (
+    <Card className="settings-card mt-6">
+      <SectionHeading
+        title="On-chain Contract Deployments"
+        description="Verified deployments across EVM networks and Solana clusters"
+      />
+      {loading ? (
+        <p className="text-xs text-muted py-4">Loading deployment records...</p>
+      ) : deployments.length === 0 ? (
+        <div className="py-6 text-center text-xs text-muted">
+          No on-chain contracts or tokens deployed for this project yet. Use the Build Engine or Token Studio to deploy.
+        </div>
+      ) : (
+        <div className="overflow-x-auto mt-4">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-border text-muted">
+                <th className="py-2.5">Contract Name</th>
+                <th className="py-2.5">Network</th>
+                <th className="py-2.5">Environment</th>
+                <th className="py-2.5">Deployed Address</th>
+                <th className="py-2.5">Transaction</th>
+                <th className="py-2.5">Verification</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {deployments.map((d, i) => (
+                <tr key={i} className="hover:bg-muted/10">
+                  <td className="py-2.5 font-semibold text-foreground">
+                    {d.contract_name || "Contract"}
+                  </td>
+                  <td className="py-2.5">{d.network_name}</td>
+                  <td className="py-2.5">
+                    <Badge tone={d.environment === "mainnet" ? "danger" : "success"}>
+                      {d.environment}
+                    </Badge>
+                  </td>
+                  <td className="py-2.5 font-mono text-brand">
+                    {d.contract_address.slice(0, 8)}...{d.contract_address.slice(-6)}
+                  </td>
+                  <td className="py-2.5 font-mono text-muted">
+                    {d.explorer_url ? (
+                      <a href={d.explorer_url} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
+                        {d.tx_hash.slice(0, 10)}...
+                      </a>
+                    ) : (
+                      `${d.tx_hash.slice(0, 10)}...`
+                    )}
+                  </td>
+                  <td className="py-2.5">
+                    <Badge tone="success">
+                      {d.verification_status || "Verified"}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -266,7 +571,40 @@ function CreateProject({
 
   const [tokenSymbol, setTokenSymbol] = useState("")
 
+  const [logoUrl, setLogoUrl] = useState("")
+
+  const [logoError, setLogoError] = useState("")
+
+  const [showLogoUrlInput, setShowLogoUrlInput] = useState(false)
+
+  const [logoUrlValue, setLogoUrlValue] = useState("")
+
   const [error, setError] = useState("")
+
+  const newProjectFileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleNewProjectLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError("Image must be smaller than 2MB")
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setLogoError("Please select a valid image")
+      return
+    }
+
+    setLogoError("")
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string
+      if (dataUrl) setLogoUrl(dataUrl)
+    }
+    reader.readAsDataURL(file)
+  }
 
   const submit = () => {
     if (!name.trim()) {
@@ -293,6 +631,8 @@ function CreateProject({
       tokenSymbol: tokenSymbol.trim().toUpperCase(),
 
       createdAt: new Date().toISOString(),
+
+      logoUrl: logoUrl || undefined,
     })
   }
 
@@ -310,6 +650,76 @@ function CreateProject({
           title="Project identity"
           description="This information can be edited and exported later."
         />
+        <div className="logo-upload mb-4">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="Project logo"
+              className="nova-logo large object-cover"
+            />
+          ) : (
+            <span className="nova-logo large">{name ? name[0] : "P"}</span>
+          )}
+          <div>
+            <strong>Project logo (optional)</strong>
+            <small>PNG, JPG, SVG or WebP · Max 2MB</small>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="file"
+                ref={newProjectFileInputRef}
+                onChange={handleNewProjectLogo}
+                accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+                className="hidden"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => newProjectFileInputRef.current?.click()}
+              >
+                Upload logo
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowLogoUrlInput(!showLogoUrlInput)}
+              >
+                {showLogoUrlInput ? "Cancel URL" : "Image URL"}
+              </Button>
+              {logoUrl && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLogoUrl("")}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+            {logoError && <p className="text-[10px] text-red-400 mt-1">{logoError}</p>}
+            {showLogoUrlInput && (
+              <div className="flex items-center gap-2 mt-2 w-full max-w-sm">
+                <Input
+                  placeholder="https://... or ipfs://..."
+                  value={logoUrlValue}
+                  onChange={(e) => setLogoUrlValue(e.target.value)}
+                  className="text-xs py-1"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (logoUrlValue.trim()) {
+                      setLogoUrl(logoUrlValue.trim())
+                      setShowLogoUrlInput(false)
+                    }
+                  }}
+                >
+                  Apply
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
         <div className="field-row">
           <label className="field">
             <span>Project name</span>

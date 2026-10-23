@@ -541,6 +541,8 @@ export const navItems = [
 
   { label: "Build Engine", icon: "build" },
 
+  { label: "Token Studio", icon: "rocket" },
+
   { label: "Community", icon: "community" },
 
   { label: "Content Studio", icon: "content" },
@@ -550,4 +552,6 @@ export const navItems = [
   { label: "Campaigns", icon: "campaigns" },
 
   { label: "Analytics", icon: "analytics" },
+
+  { label: "Waitlist Admin", icon: "shield" },
 ] as const

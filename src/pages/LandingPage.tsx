@@ -2,6 +2,7 @@ import { useState, useId } from "react"
 import { Icon } from "../components/Icons"
 import { Badge, Button, Card, Input, Select } from "../components/ui"
 import { COMMUNITY_CONFIG } from "../config/community"
+import brandLogo from "../assets/logo-square.png"
 
 interface LandingPageProps {
   onLaunchApp: (page?: string) => void
@@ -137,9 +138,13 @@ export default function LandingPage({
         <div className="landing-nav-container">
           <a href="#" className="landing-brand" aria-label="ChainForge Home">
             <img
-              src="/logo-square.png"
+              src={brandLogo}
               alt="ChainForge Logo"
               className="brand-logo-img"
+              onError={(e) => {
+                const target = e.currentTarget
+                if (target.src !== "/logo-square.png") target.src = "/logo-square.png"
+              }}
             />
             <span className="landing-brand-text">
               <strong>ChainForge</strong>
@@ -348,9 +353,13 @@ export default function LandingPage({
                 <div className="landing-preview-body">
                   <div className="landing-preview-hero-row">
                     <img
-                      src="/logo-square.png"
+                      src={brandLogo}
                       alt="ChainForge Logo"
                       className="brand-logo-img size-10"
+                      onError={(e) => {
+                        const target = e.currentTarget
+                        if (target.src !== "/logo-square.png") target.src = "/logo-square.png"
+                      }}
                     />
                     <div>
                       <h2 className="landing-preview-name">Nova Yield</h2>
@@ -1205,9 +1214,13 @@ export default function LandingPage({
             <div className="landing-footer-brand">
               <div className="landing-brand">
                 <img
-                  src="/logo-square.png"
+                  src={brandLogo}
                   alt="ChainForge Logo"
                   className="brand-logo-img"
+                  onError={(e) => {
+                    const target = e.currentTarget
+                    if (target.src !== "/logo-square.png") target.src = "/logo-square.png"
+                  }}
                 />
                 <span className="landing-brand-text">
                   <strong>ChainForge</strong>

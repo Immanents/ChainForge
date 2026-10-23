@@ -417,7 +417,8 @@ function DraftTable({ published = false }: { published?: boolean }) {
         }
         action={<Input icon="search" placeholder="Search content" />}
       />
-      <div className="draft-table table-scroll">
+      <div className="table-scroll">
+        <div className="draft-table">
         <div className="table-head">
           <span>Content</span>
           <span>Platform</span>
@@ -458,6 +459,7 @@ function DraftTable({ published = false }: { published?: boolean }) {
             <Button variant="ghost" size="icon" icon="more" />
           </div>
         ))}
+        </div>
       </div>
     </Card>
   )
@@ -484,7 +486,8 @@ function Calendar() {
           </div>
         }
       />
-      <div className="calendar-grid">
+      <div className="table-scroll">
+        <div className="calendar-grid">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
           <strong key={d}>{d}</strong>
         ))}
@@ -499,6 +502,7 @@ function Calendar() {
             )}
           </div>
         ))}
+        </div>
       </div>
     </Card>
   )

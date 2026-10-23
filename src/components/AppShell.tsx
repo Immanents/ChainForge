@@ -210,7 +210,9 @@ export function AppShell({
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
             />
-            <strong>{page}</strong>
+            <strong className="text-sm sm:text-base font-bold tracking-tight truncate max-w-[100px] xs:max-w-[140px] sm:max-w-none">
+              {page}
+            </strong>
             <span className="header-divider" />
             <button className="project-pill" onClick={() => setPage("Project")}>
               {activeProject.logoUrl ? (
@@ -233,7 +235,7 @@ export function AppShell({
                 size="sm"
                 icon="globe"
                 onClick={onGoToLanding}
-                className="text-xs"
+                className="hidden md:inline-flex text-xs"
                 title="Return to public landing page"
               >
                 Public Site
@@ -254,10 +256,11 @@ export function AppShell({
               } mode`}
             />
             {user ? (
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-brand/15 text-brand-bright border border-brand/30">
-                  <Icon name="sparkles" className="size-3.5 text-brand-bright" />
-                  <span>{creditsBalance} Credits</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-xs font-semibold bg-brand/15 text-brand-bright border border-brand/30">
+                  <Icon name="sparkles" className="size-3 sm:size-3.5 text-brand-bright" />
+                  <span>{creditsBalance}</span>
+                  <span className="hidden sm:inline">Credits</span>
                 </span>
                 <span className="hidden sm:inline-flex uppercase text-[10px] tracking-wider px-2 py-0.5 rounded font-mono font-bold bg-white/10 text-text-secondary border border-border">
                   {profile?.plan?.replace("_", " ") || "Free"}
@@ -266,19 +269,20 @@ export function AppShell({
                   variant="ghost"
                   size="sm"
                   onClick={() => signOut()}
-                  className="text-xs text-text-muted hover:text-red-400"
+                  className="text-xs text-text-muted hover:text-red-400 px-2 sm:px-3"
                   title="Sign out of your account"
                 >
-                  Sign Out
+                  <span className="hidden xs:inline">Sign Out</span>
+                  <span className="xs:hidden">Exit</span>
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 sm:gap-1.5">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => openAuthModal("signin")}
-                  className="text-xs font-medium"
+                  className="text-xs font-medium px-2 sm:px-3"
                 >
                   Sign In
                 </Button>
@@ -286,9 +290,10 @@ export function AppShell({
                   variant="primary"
                   size="sm"
                   onClick={() => openAuthModal("signup")}
-                  className="text-xs font-medium"
+                  className="text-xs font-medium px-2 sm:px-3"
                 >
-                  Get Access
+                  <span className="hidden xs:inline">Get Access</span>
+                  <span className="xs:hidden">Join</span>
                 </Button>
               </div>
             )}

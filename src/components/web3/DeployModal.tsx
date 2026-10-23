@@ -176,8 +176,8 @@ export function DeployModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <Card className="w-full max-w-xl border border-border bg-[#0d1117] text-foreground p-6 shadow-2xl rounded-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4">
+      <Card className="w-full max-w-xl border border-border bg-[#0d1117] text-foreground p-4 sm:p-6 shadow-2xl rounded-2xl max-h-[92dvh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
           <div className="flex items-center gap-2">
             <Icon name="rocket" className="size-5 text-brand" />

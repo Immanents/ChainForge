@@ -273,7 +273,7 @@ function ConnectedState({
             <div>
               <strong>Project logo</strong>
               <small>PNG, JPG, SVG or WebP · Max 2MB</small>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex flex-wrap items-center gap-2 mt-1">
                 <input
                   type="file"
                   ref={fileInputRef}

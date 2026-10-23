@@ -115,7 +115,8 @@ function ActivityFeed({ limit }: { limit?: number }) {
           </div>
         }
       />
-      <div className="activity-table table-scroll">
+      <div className="table-scroll">
+        <div className="activity-table">
         <div className="table-head">
           <span>Event</span>
           <span>Platform</span>
@@ -167,6 +168,7 @@ function ActivityFeed({ limit }: { limit?: number }) {
             <small>{a.time}</small>
           </div>
         ))}
+        </div>
       </div>
     </Card>
   )

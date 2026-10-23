@@ -143,86 +143,88 @@ export default function Analytics() {
           title="Campaign performance"
           description="Compare active and completed growth initiatives"
         />
-        <div className="analytics-table table-scroll">
-          <div className="table-head">
-            <span>Campaign</span>
-            <span>Reach</span>
-            <span>Engagement</span>
-            <span>New members</span>
-            <span>Sentiment lift</span>
-            <span>Efficiency</span>
-          </div>
-          {[
-            [
-              "Intent Layer Launch",
-
-              "1.2M",
-
-              "8.7%",
-
-              "6,420",
-
-              "+11%",
-
-              "$3.84 CPM",
-            ],
-
-            [
-              "Nova Builders Season 2",
-
-              "482K",
-
-              "12.4%",
-
-              "2,180",
-
-              "+8%",
-
-              "$4.12 CPM",
-            ],
-
-            [
-              "Testnet Momentum",
-
-              "1.8M",
-
-              "10.8%",
-
-              "12,480",
-
-              "+14%",
-
-              "$2.96 CPM",
-            ],
-
-            [
-              "Community AMA Series",
-
-              "218K",
-
-              "16.1%",
-
-              "1,240",
-
-              "+6%",
-
-              "$5.20 CPM",
-            ],
-          ].map((r) => (
-            <div className="table-row" key={r[0]}>
-              {r.map((x, i) =>
-                i === 0 ? (
-                  <strong key={x}>{x}</strong>
-                ) : i === 4 ? (
-                  <Badge tone="success" key={x}>
-                    {x}
-                  </Badge>
-                ) : (
-                  <span key={x}>{x}</span>
-                ),
-              )}
+        <div className="table-scroll">
+          <div className="analytics-table">
+            <div className="table-head">
+              <span>Campaign</span>
+              <span>Reach</span>
+              <span>Engagement</span>
+              <span>New members</span>
+              <span>Sentiment lift</span>
+              <span>Efficiency</span>
             </div>
-          ))}
+            {[
+              [
+                "Intent Layer Launch",
+
+                "1.2M",
+
+                "8.7%",
+
+                "6,420",
+
+                "+11%",
+
+                "$3.84 CPM",
+              ],
+
+              [
+                "Nova Builders Season 2",
+
+                "482K",
+
+                "12.4%",
+
+                "2,180",
+
+                "+8%",
+
+                "$4.12 CPM",
+              ],
+
+              [
+                "Testnet Momentum",
+
+                "1.8M",
+
+                "10.8%",
+
+                "12,480",
+
+                "+14%",
+
+                "$2.96 CPM",
+              ],
+
+              [
+                "Community AMA Series",
+
+                "218K",
+
+                "16.1%",
+
+                "1,240",
+
+                "+6%",
+
+                "$5.20 CPM",
+              ],
+            ].map((r) => (
+              <div className="table-row" key={r[0]}>
+                {r.map((x, i) =>
+                  i === 0 ? (
+                    <strong key={x}>{x}</strong>
+                  ) : i === 4 ? (
+                    <Badge tone="success" key={x}>
+                      {x}
+                    </Badge>
+                  ) : (
+                    <span key={x}>{x}</span>
+                  ),
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </Card>
     </div>

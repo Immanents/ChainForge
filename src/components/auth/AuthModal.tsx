@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext"
 import { AuthService } from "../../services/supabaseClient"
 import { Icon } from "../Icons"
 import { Button, Card, Input } from "../ui"
+import { BRAND_LOGO_DATA_URI } from "../../assets/brandLogoData"
 
 export function AuthModal() {
   const {
@@ -57,8 +58,8 @@ export function AuthModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-      <Card className="w-full max-w-md border border-border bg-[#0d1117] text-foreground p-6 shadow-2xl rounded-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4">
+      <Card className="w-full max-w-md border border-border bg-[#0d1117] text-foreground p-5 sm:p-6 shadow-2xl rounded-2xl relative max-h-[92dvh] overflow-y-auto">
         <button
           onClick={closeAuthModal}
           className="absolute top-4 right-4 text-muted hover:text-foreground transition-colors p-1"
@@ -68,7 +69,7 @@ export function AuthModal() {
         </button>
 
         <div className="flex items-center gap-2 mb-6">
-          <img src="/logo-square.png" alt="ChainForge Logo" className="w-8 h-8 rounded-lg" />
+          <img src={BRAND_LOGO_DATA_URI} alt="ChainForge Logo" className="w-8 h-8 rounded-lg" />
           <div>
             <h3 className="text-lg font-bold">
               {authModalMode === "signin" && "Sign In to ChainForge"}

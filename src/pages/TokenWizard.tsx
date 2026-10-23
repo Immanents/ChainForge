@@ -297,7 +297,7 @@ export default function TokenWizard() {
               {activeCode}
             </pre>
 
-            <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+            <div className="mt-4 pt-4 border-t border-border flex flex-col sm:flex-row items-stretch sm:items-center gap-3 justify-between">
               <span className="text-xs text-muted">
                 Ready for compilation on Arbitrum, Base, Ethereum, or Solana Devnet.
               </span>

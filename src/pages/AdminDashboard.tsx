@@ -373,10 +373,10 @@ export default function AdminDashboard() {
       {isAuthenticated && (
         <>
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 mb-6 border-b border-border/60 pb-3">
+          <div className="flex items-center gap-2 mb-6 border-b border-border/60 pb-3 overflow-x-auto whitespace-nowrap -webkit-overflow-scrolling-touch scrollbar-none">
             <button
               onClick={() => setActiveTab("users")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition flex-shrink-0 ${
                 activeTab === "users"
                   ? "bg-brand text-black"
                   : "text-muted hover:text-foreground hover:bg-white/5"
@@ -387,7 +387,7 @@ export default function AdminDashboard() {
             </button>
             <button
               onClick={() => setActiveTab("invitations")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition flex-shrink-0 ${
                 activeTab === "invitations"
                   ? "bg-brand text-black"
                   : "text-muted hover:text-foreground hover:bg-white/5"
@@ -398,7 +398,7 @@ export default function AdminDashboard() {
             </button>
             <button
               onClick={() => setActiveTab("waitlist")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition flex-shrink-0 ${
                 activeTab === "waitlist"
                   ? "bg-brand text-black"
                   : "text-muted hover:text-foreground hover:bg-white/5"
@@ -409,7 +409,7 @@ export default function AdminDashboard() {
             </button>
             <button
               onClick={() => setActiveTab("audit")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition flex-shrink-0 ${
                 activeTab === "audit"
                   ? "bg-brand text-black"
                   : "text-muted hover:text-foreground hover:bg-white/5"

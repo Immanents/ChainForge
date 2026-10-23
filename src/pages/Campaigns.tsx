@@ -78,57 +78,59 @@ export default function Campaigns() {
             </div>
           }
         />
-        <div className="campaign-table table-scroll">
-          <div className="table-head">
-            <span>Campaign</span>
-            <span>Status</span>
-            <span>Timeline</span>
-            <span>Goal</span>
-            <span>Budget</span>
-            <span>Reach</span>
-            <span>Engagement</span>
-            <span>Progress</span>
-          </div>
-          {campaigns.map((c) => (
-            <button
-              className="table-row"
-              key={c.name}
-              onClick={() => {
-                setSelected(c)
+        <div className="table-scroll">
+          <div className="campaign-table">
+            <div className="table-head">
+              <span>Campaign</span>
+              <span>Status</span>
+              <span>Timeline</span>
+              <span>Goal</span>
+              <span>Budget</span>
+              <span>Reach</span>
+              <span>Engagement</span>
+              <span>Progress</span>
+            </div>
+            {campaigns.map((c) => (
+              <button
+                className="table-row"
+                key={c.name}
+                onClick={() => {
+                  setSelected(c)
 
-                setView("detail")
-              }}
-            >
-              <div>
-                <span className="campaign-symbol">
-                  <Icon name="campaigns" />
-                </span>
-                <strong>{c.name}</strong>
-              </div>
-              <Badge
-                tone={
-                  c.status === "Active"
-                    ? "success"
-                    : c.status === "Paused"
-                      ? "warning"
-                      : c.status === "Completed"
-                        ? "info"
-                        : "neutral"
-                }
+                  setView("detail")
+                }}
               >
-                {c.status}
-              </Badge>
-              <small>{c.dates}</small>
-              <span>{c.goal}</span>
-              <strong>{c.budget}</strong>
-              <span>{c.reach}</span>
-              <span>{c.engagement}</span>
-              <div>
-                <Progress value={c.progress} />
-                <small>{c.progress}%</small>
-              </div>
-            </button>
-          ))}
+                <div>
+                  <span className="campaign-symbol">
+                    <Icon name="campaigns" />
+                  </span>
+                  <strong>{c.name}</strong>
+                </div>
+                <Badge
+                  tone={
+                    c.status === "Active"
+                      ? "success"
+                      : c.status === "Paused"
+                        ? "warning"
+                        : c.status === "Completed"
+                          ? "info"
+                          : "neutral"
+                  }
+                >
+                  {c.status}
+                </Badge>
+                <small>{c.dates}</small>
+                <span>{c.goal}</span>
+                <strong>{c.budget}</strong>
+                <span>{c.reach}</span>
+                <span>{c.engagement}</span>
+                <div>
+                  <Progress value={c.progress} />
+                  <small>{c.progress}%</small>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       </Card>
     </div>

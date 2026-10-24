@@ -149,7 +149,16 @@ export async function handleBillingInitialize(
   let authorizationUrl = ""
   let accessCode = ""
 
-  if (paystackSecretKey && !paystackSecretKey.startsWith("mock-")) {
+  const isRealPaystackKey =
+    paystackSecretKey &&
+    !paystackSecretKey.includes("mock") &&
+    !paystackSecretKey.startsWith("mock-") &&
+    (paystackSecretKey.startsWith("sk_test_") || paystackSecretKey.startsWith("sk_live_"))
+
+  const proto = (req.headers["x-forwarded-proto"] as string) || (req.headers.host?.includes("localhost") ? "http" : "https")
+  const host = req.headers.host || "localhost:5173"
+
+  if (isRealPaystackKey) {
     try {
       const psRes = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
@@ -162,7 +171,7 @@ export async function handleBillingInitialize(
           amount: amountMinorUnits,
           currency,
           reference,
-          callback_url: payload.callbackUrl || `http://${req.headers.host || "localhost:5173"}/#app/settings?tab=Billing&reference=${reference}`,
+          callback_url: payload.callbackUrl || `${proto}://${host}/#app/settings?tab=Billing&reference=${reference}`,
           metadata: {
             user_id: user.id,
             plan_id: planId,
@@ -184,9 +193,9 @@ export async function handleBillingInitialize(
     }
   }
 
-  // Safe developer sandbox fallback when live Paystack credentials are not yet configured in local environment
+  // Safe developer sandbox fallback when live Paystack credentials are not yet configured in local/production environment
   if (!authorizationUrl) {
-    authorizationUrl = `http://${req.headers.host || "localhost:5173"}/#app/settings?tab=Billing&simulated_checkout=true&reference=${reference}&amount=${amountMinorUnits}`
+    authorizationUrl = `${proto}://${host}/#app/settings?tab=Billing&simulated_checkout=true&reference=${reference}&amount=${amountMinorUnits}`
     accessCode = `mock_acc_${reference}`
   }
 

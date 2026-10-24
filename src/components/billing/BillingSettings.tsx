@@ -155,7 +155,42 @@ export function BillingSettings() {
         throw new Error(data?.error || "Failed to initialize payment")
       }
 
-      // If simulated developer sandbox, show prompt, else redirect to Paystack
+      // 1. If Paystack Inline SDK is loaded, open popup directly on screen
+      if (data.access_code && !data.authorization_url?.includes("simulated_checkout=true")) {
+        const paystackKey =
+          data.public_key ||
+          import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ||
+          "pk_test_chainforge"
+
+        if (typeof (window as any).PaystackPop !== "undefined") {
+          try {
+            const popup = (window as any).PaystackPop.setup({
+              key: paystackKey,
+              email: user?.email,
+              amount: data.amount_minor_units,
+              access_code: data.access_code,
+              callback: (response: any) => {
+                verifyPayment(response.reference || data.reference)
+              },
+              onClose: () => {
+                setMessage({ type: "error", text: "Paystack payment window was closed." })
+              },
+            })
+            popup.openIframe()
+            return
+          } catch (popupErr) {
+            console.warn("Paystack Inline failed to open iframe, falling back to hosted page:", popupErr)
+          }
+        }
+
+        // If PaystackPop is not available on window, open the Paystack checkout page
+        if (data.authorization_url) {
+          window.location.href = data.authorization_url
+          return
+        }
+      }
+
+      // 2. Simulated developer sandbox fallback
       if (data.authorization_url?.includes("simulated_checkout=true")) {
         setSandboxRef(data.reference)
       } else if (data.authorization_url) {
@@ -200,6 +235,41 @@ export function BillingSettings() {
         throw new Error(data?.error || "Failed to initialize credit purchase")
       }
 
+      // 1. If Paystack Inline SDK is loaded, open popup directly on screen
+      if (data.access_code && !data.authorization_url?.includes("simulated_checkout=true")) {
+        const paystackKey =
+          data.public_key ||
+          import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ||
+          "pk_test_chainforge"
+
+        if (typeof (window as any).PaystackPop !== "undefined") {
+          try {
+            const popup = (window as any).PaystackPop.setup({
+              key: paystackKey,
+              email: user?.email,
+              amount: data.amount_minor_units,
+              access_code: data.access_code,
+              callback: (response: any) => {
+                verifyPayment(response.reference || data.reference)
+              },
+              onClose: () => {
+                setMessage({ type: "error", text: "Paystack payment window was closed." })
+              },
+            })
+            popup.openIframe()
+            return
+          } catch (popupErr) {
+            console.warn("Paystack Inline failed to open iframe, falling back to hosted page:", popupErr)
+          }
+        }
+
+        if (data.authorization_url) {
+          window.location.href = data.authorization_url
+          return
+        }
+      }
+
+      // 2. Simulated developer sandbox fallback
       if (data.authorization_url?.includes("simulated_checkout=true")) {
         setSandboxRef(data.reference)
       } else if (data.authorization_url) {

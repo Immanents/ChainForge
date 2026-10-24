@@ -39,8 +39,18 @@ export default async function handler(req: IncomingMessage & { body?: any }, res
       process.env.VITE_SUPABASE_ANON_KEY ||
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpyeGdreWh6cWR5eXF0c213aXh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MDExMDgsImV4cCI6MjEwODE3NzEwOH0.mYwn0fDz24yFOjAuhDy1JCjifwht4-FzkTHw-OKPNrs"
 
-    const paystackSecretKey =
-      process.env.PAYSTACK_SECRET_KEY || ""
+    const paystackSecretKey = (
+      process.env.PAYSTACK_SECRET_KEY ||
+      process.env.VITE_PAYSTACK_SECRET_KEY ||
+      process.env.PAYSTACK_KEY ||
+      ""
+    ).trim().replace(/^Bearer\s+/i, "")
+
+    const paystackPublicKey = (
+      process.env.VITE_PAYSTACK_PUBLIC_KEY ||
+      process.env.PAYSTACK_PUBLIC_KEY ||
+      ""
+    ).trim()
 
     // 1. Authenticate user
     const authHeader = req.headers["authorization"] || ""
@@ -154,6 +164,19 @@ export default async function handler(req: IncomingMessage & { body?: any }, res
       return
     }
 
+    // Guard: Check if user accidentally entered a public key (pk_...) as the secret key
+    if (paystackSecretKey.startsWith("pk_")) {
+      res.statusCode = 400
+      res.setHeader("Content-Type", "application/json")
+      res.end(
+        JSON.stringify({
+          error:
+            "Invalid PAYSTACK_SECRET_KEY: You configured a Public Key ('pk_...'). Please set your Secret Key (starts with 'sk_test_') in Vercel Settings -> Environment Variables.",
+        }),
+      )
+      return
+    }
+
     // 5. Initialize Paystack checkout
     let authorizationUrl = ""
     let accessCode = ""
@@ -168,40 +191,76 @@ export default async function handler(req: IncomingMessage & { body?: any }, res
     const host = req.headers.host || "localhost:5173"
 
     if (isRealPaystackKey) {
-      try {
+      const callPaystackInit = async (targetCurrency?: string, targetAmount?: number) => {
+        const bodyPayload: Record<string, any> = {
+          email: user.email,
+          amount: targetAmount ?? amountMinorUnits,
+          reference,
+          callback_url: payload.callbackUrl || `${proto}://${host}/#app/settings?tab=Billing&reference=${reference}`,
+          metadata: {
+            user_id: user.id,
+            plan_id: planId,
+            type: payload.type,
+            package_credits: packageCredits,
+          },
+        }
+        if (targetCurrency) {
+          bodyPayload.currency = targetCurrency
+        }
+
         const psRes = await fetch("https://api.paystack.co/transaction/initialize", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${paystackSecretKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            email: user.email,
-            amount: amountMinorUnits,
-            currency,
-            reference,
-            callback_url: payload.callbackUrl || `${proto}://${host}/#app/settings?tab=Billing&reference=${reference}`,
-            metadata: {
-              user_id: user.id,
-              plan_id: planId,
-              type: payload.type,
-              package_credits: packageCredits,
-            },
-          }),
+          body: JSON.stringify(bodyPayload),
         })
+        return psRes.json()
+      }
 
-        const psData = await psRes.json()
-        if (psRes.ok && psData.status) {
-          authorizationUrl = psData.data.authorization_url
-          accessCode = psData.data.access_code
-        } else {
-          console.warn("[Paystack Gateway] API call failed, using sandbox fallback:", psData.message)
-        }
-      } catch (err) {
+      let psData: any = null
+      try {
+        psData = await callPaystackInit(currency, amountMinorUnits)
+      } catch (err: unknown) {
         console.warn("[Paystack Gateway] Network request failed:", err)
+      }
+
+      // If Paystack says currency is not supported by merchant (e.g. Nigerian account expecting NGN)
+      if (psData && !psData.status && psData.message && /currency/i.test(psData.message)) {
+        console.warn("[Paystack Gateway] Currency USD not enabled on merchant, converting to NGN equivalent...")
+        // Convert USD to NGN at standard rates (~1550 NGN per USD)
+        const ngnAmountMinor = Math.round((amountMinorUnits / 100) * 1550 * 100)
+        try {
+          psData = await callPaystackInit("NGN", ngnAmountMinor)
+        } catch {}
+
+        if (psData && !psData.status) {
+          // If still rejected, retry without explicit currency so Paystack uses default account currency
+          try {
+            psData = await callPaystackInit(undefined, amountMinorUnits)
+          } catch {}
+        }
+      }
+
+      if (psData && psData.status && psData.data) {
+        authorizationUrl = psData.data.authorization_url
+        accessCode = psData.data.access_code
+      } else if (psData && !psData.status) {
+        // Report the real Paystack error so the developer can see why Paystack rejected it
+        res.statusCode = 400
+        res.setHeader("Content-Type", "application/json")
+        res.end(
+          JSON.stringify({
+            error: `Paystack Error: ${psData.message || "Failed to initialize payment gateway"}`,
+            details: psData,
+          }),
+        )
+        return
       }
     }
 
+    // Safe developer sandbox fallback when NO Paystack credentials are provided at all
     if (!authorizationUrl) {
       authorizationUrl = `${proto}://${host}/#app/settings?tab=Billing&simulated_checkout=true&reference=${reference}&amount=${amountMinorUnits}`
       accessCode = `mock_acc_${reference}`
@@ -218,6 +277,7 @@ export default async function handler(req: IncomingMessage & { body?: any }, res
         amount_minor_units: amountMinorUnits,
         currency,
         description,
+        public_key: paystackPublicKey,
       }),
     )
   } catch (err: unknown) {

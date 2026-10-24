@@ -41,7 +41,7 @@ export async function authenticateRequest(
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     global: {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${serviceRoleKey}` },
     },
   })
 
@@ -124,7 +124,7 @@ export async function deductCredits(
 ): Promise<{ success: boolean; error?: string; balance?: number }> {
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     global: {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${serviceRoleKey}` },
     },
   })
   const { data, error } = await supabase.rpc("deduct_user_credits", {

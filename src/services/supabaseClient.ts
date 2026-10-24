@@ -25,7 +25,7 @@ export type UserProfile = {
   full_name: string | null
   role: "user" | "admin"
   status: "pending" | "active" | "suspended" | "revoked"
-  plan: "free_trial" | "builder" | "pro" | "enterprise"
+  plan: "free_trial" | "trial" | "builder" | "pro" | "team" | "enterprise" | string
   credits_balance: number
   plan_expires_at: string | null
   created_at: string

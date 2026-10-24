@@ -34,8 +34,23 @@ export async function readJsonBody(
   req: IncomingMessage & { body?: any },
   maxBytes: number,
 ): Promise<{ ok: true; data: unknown } | { ok: false; error: string; status: number }> {
-  if (req.body && typeof req.body === "object") {
-    return { ok: true, data: req.body }
+  // If the serverless runtime or body-parser already parsed the body
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === "object") {
+      return { ok: true, data: req.body }
+    }
+    if (typeof req.body === "string") {
+      try {
+        return { ok: true, data: JSON.parse(req.body) }
+      } catch {
+        return { ok: false, error: "Invalid JSON payload.", status: 400 }
+      }
+    }
+  }
+
+  // If stream already finished before reaching here
+  if ((req as any).readableEnded || req.destroyed) {
+    return { ok: true, data: {} }
   }
 
   return new Promise((resolve) => {
@@ -84,7 +99,17 @@ export async function handleApiRoute(
   res: ServerResponse,
 ): Promise<boolean> {
   const url = req.url || ""
-  const path = url.split("?")[0]
+  let path = url.split("?")[0]
+
+  // Detect rewritten paths from Vercel edge proxy
+  const matchedPath =
+    (req.headers["x-matched-path"] as string) ||
+    (req.headers["x-invoke-path"] as string) ||
+    (req.headers["x-forwarded-uri"] as string) ||
+    ""
+  if (matchedPath && (path === "/api/index" || path === "/api" || path === "/api/")) {
+    path = matchedPath.split("?")[0]
+  }
 
   if (!path.startsWith("/api/")) {
     return false

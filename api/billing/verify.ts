@@ -24,10 +24,15 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     process.env.VITE_SUPABASE_ANON_KEY ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpyeGdreWh6cWR5eXF0c213aXh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MDExMDgsImV4cCI6MjEwODE3NzEwOH0.mYwn0fDz24yFOjAuhDy1JCjifwht4-FzkTHw-OKPNrs"
 
-  const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || ""
+  const paystackSecretKey = (
+    process.env.PAYSTACK_SECRET_KEY ||
+    process.env.VITE_PAYSTACK_SECRET_KEY ||
+    process.env.PAYSTACK_KEY ||
+    ""
+  ).trim().replace(/^Bearer\s+/i, "")
 
   const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`)
-  const reference = url.searchParams.get("reference")
+  const reference = url.searchParams.get("reference") || url.searchParams.get("trxref")
 
   if (!reference) {
     res.statusCode = 400
@@ -39,6 +44,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const supabase = createClient(supabaseUrl, supabaseKey)
 
   let isVerified = false
+  let verifiedAmount = 0
+  let verifiedCurrency = "USD"
   let gatewayData: any = {}
 
   const isRealPaystackKey =
@@ -55,7 +62,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const psData = await psRes.json()
       if (psRes.ok && psData.status && psData.data?.status === "success") {
         isVerified = true
+        verifiedAmount = psData.data.amount || 0
+        verifiedCurrency = psData.data.currency || "USD"
         gatewayData = psData.data
+      } else {
+        console.warn("[Paystack Gateway] Verification returned unsuccessful status:", psData.message)
       }
     } catch (err) {
       console.warn("[Paystack Gateway] Verification call failed:", err)
@@ -63,6 +74,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   } else {
     // Sandbox simulated verification
     isVerified = true
+    verifiedAmount = 0
+    verifiedCurrency = "USD"
     gatewayData = { simulated: true, verified_at: new Date().toISOString() }
   }
 
@@ -73,16 +86,31 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return
   }
 
+  // Atomic fulfillment using the correct PostgreSQL RPC signature (p_reference, p_paid_amount, p_currency)
   const { data: fulfillment, error: fulfillError } = await supabase.rpc("fulfill_payment_transaction", {
     p_reference: reference,
-    p_gateway_reference: gatewayData.id ? String(gatewayData.id) : reference,
-    p_gateway_response: gatewayData,
+    p_paid_amount: verifiedAmount,
+    p_currency: verifiedCurrency,
   })
 
   if (fulfillError || !fulfillment?.success) {
-    res.statusCode = 500
+    // Check if the transaction was already fulfilled to be idempotent
+    const { data: existingTx } = await supabase
+      .from("payment_transactions")
+      .select("status")
+      .eq("reference", reference)
+      .maybeSingle()
+
+    if (existingTx?.status === "success") {
+      res.statusCode = 200
+      res.setHeader("Content-Type", "application/json")
+      res.end(JSON.stringify({ success: true, message: "Payment already verified and active", alreadyFulfilled: true }))
+      return
+    }
+
+    res.statusCode = 400
     res.setHeader("Content-Type", "application/json")
-    res.end(JSON.stringify({ error: `Fulfillment failed: ${fulfillment?.error || fulfillError?.message}` }))
+    res.end(JSON.stringify({ error: `Fulfillment failed: ${fulfillment?.error || fulfillError?.message || "Could not fulfill transaction"}` }))
     return
   }
 

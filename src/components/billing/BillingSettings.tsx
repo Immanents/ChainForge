@@ -110,6 +110,10 @@ export function BillingSettings() {
       if (res.ok && data?.success) {
         setMessage({ type: "success", text: "Payment verified successfully! Your plan and credits have been updated." })
         setSandboxRef(null)
+        try {
+          const cleanUrl = window.location.href.replace(/([?&])(reference|trxref|simulated_checkout)=[^&#]*/gi, "").replace(/&&+/g, "&").replace(/[?&]#/, "#")
+          window.history.replaceState({}, document.title, cleanUrl)
+        } catch {}
         await refreshProfile()
         await loadBillingData()
       } else {

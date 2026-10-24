@@ -14,11 +14,19 @@ export const CREDIT_PACKAGES: Record<string, { name: string; credits: number; pr
   credits_2500: { name: "2,500 AI Credits Scale", credits: 2500, priceMinorUnits: 19900, currency: "USD" }, // $199.00
 }
 
-async function readRawBody(req: IncomingMessage): Promise<string> {
+async function readRawBody(req: IncomingMessage & { body?: any }): Promise<string> {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === "string") return req.body
+    if (typeof req.body === "object") return JSON.stringify(req.body)
+  }
+  if ((req as any).readableEnded || req.destroyed) {
+    return ""
+  }
   return new Promise((resolve) => {
     let body = ""
     req.on("data", (chunk) => (body += chunk))
     req.on("end", () => resolve(body))
+    req.on("error", () => resolve(""))
   })
 }
 
@@ -50,7 +58,6 @@ export async function handleBillingInitialize(
   const user = await authenticateRequest(req, res, supabaseUrl, supabaseKey)
   if (!user) return
 
-  const raw = await readRawBody(req)
   let payload: {
     type: "subscription" | "credit_topup"
     planId?: string
@@ -58,12 +65,17 @@ export async function handleBillingInitialize(
     callbackUrl?: string
   }
 
-  try {
-    payload = JSON.parse(raw)
-  } catch {
-    res.statusCode = 400
-    res.end(JSON.stringify({ error: "Invalid JSON request body" }))
-    return
+  if ((req as any).body && typeof (req as any).body === "object") {
+    payload = (req as any).body
+  } else {
+    const raw = await readRawBody(req)
+    try {
+      payload = JSON.parse(raw || "{}")
+    } catch {
+      res.statusCode = 400
+      res.end(JSON.stringify({ error: "Invalid JSON request body" }))
+      return
+    }
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey)

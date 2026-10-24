@@ -257,17 +257,31 @@ export async function authenticateAdminRequest(
   return { ok: false, error: "Unauthorized: Administrative privileges required." }
 }
 
-async function readJson<T>(req: IncomingMessage): Promise<T | null> {
+async function readJson<T>(req: IncomingMessage & { body?: any }): Promise<T | null> {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === "object") return req.body as T
+    if (typeof req.body === "string") {
+      try {
+        return JSON.parse(req.body) as T
+      } catch {
+        return null
+      }
+    }
+  }
+  if ((req as any).readableEnded || req.destroyed) {
+    return ({} as T)
+  }
   return new Promise((resolve) => {
     let body = ""
     req.on("data", (chunk) => (body += chunk))
     req.on("end", () => {
       try {
-        resolve(body ? JSON.parse(body) : {})
+        resolve(body ? JSON.parse(body) : ({} as T))
       } catch {
         resolve(null)
       }
     })
+    req.on("error", () => resolve(null))
   })
 }
 

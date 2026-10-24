@@ -101,14 +101,28 @@ export async function handleApiRoute(
   const url = req.url || ""
   let path = url.split("?")[0]
 
-  // Detect rewritten paths from Vercel edge proxy
-  const matchedPath =
-    (req.headers["x-matched-path"] as string) ||
-    (req.headers["x-invoke-path"] as string) ||
-    (req.headers["x-forwarded-uri"] as string) ||
-    ""
-  if (matchedPath && (path === "/api/index" || path === "/api" || path === "/api/")) {
-    path = matchedPath.split("?")[0]
+  // Detect rewritten paths from Vercel edge proxy / query parameters
+  if (path === "/api/index" || path === "/api" || path === "/api/") {
+    try {
+      const parsedUrl = new URL(url, "http://localhost")
+      const qPath = parsedUrl.searchParams.get("path*") || parsedUrl.searchParams.get("path")
+      if (qPath) {
+        path = qPath.startsWith("/") ? `/api${qPath}` : `/api/${qPath}`
+      }
+    } catch {
+      // url parse error fallback
+    }
+
+    if (path === "/api/index" || path === "/api" || path === "/api/") {
+      const matchedPath =
+        (req.headers["x-matched-path"] as string) ||
+        (req.headers["x-invoke-path"] as string) ||
+        (req.headers["x-forwarded-uri"] as string) ||
+        ""
+      if (matchedPath && !matchedPath.includes(":path")) {
+        path = matchedPath.split("?")[0]
+      }
+    }
   }
 
   if (!path.startsWith("/api/")) {

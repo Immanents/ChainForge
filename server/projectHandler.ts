@@ -23,6 +23,34 @@ async function extractUser(
   }
 }
 
+async function readBodyJson<T>(req: IncomingMessage & { body?: any }): Promise<T | null> {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === "object") return req.body as T
+    if (typeof req.body === "string") {
+      try {
+        return JSON.parse(req.body) as T
+      } catch {
+        return null
+      }
+    }
+  }
+  if ((req as any).readableEnded || req.destroyed) {
+    return null
+  }
+  return new Promise((resolve) => {
+    let body = ""
+    req.on("data", (chunk) => (body += chunk))
+    req.on("end", () => {
+      try {
+        resolve(body ? JSON.parse(body) : null)
+      } catch {
+        resolve(null)
+      }
+    })
+    req.on("error", () => resolve(null))
+  })
+}
+
 export type ProjectPayload = {
   id?: string
   name: string
@@ -219,43 +247,34 @@ export async function handleProjects(
       return
     }
 
-    let body = ""
-    req.on("data", (chunk) => (body += chunk))
-    req.on("end", async () => {
+    const payload = await readBodyJson<ProjectPayload & { user_id?: string; is_public?: boolean }>(req)
+    if (!payload || !payload.name) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "Project name is required" }))
+      return
+    }
+
+    payload.slug = payload.slug || payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+    payload.user_id = user.id
+    payload.is_public = payload.is_public ?? false
+
+    if (supabaseUrl && supabaseKey) {
       try {
-        const payload = JSON.parse(body) as ProjectPayload & { user_id?: string; is_public?: boolean }
-        if (!payload.name) {
-          res.writeHead(400, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "Project name is required" }))
+        const supabase = createClient(supabaseUrl, supabaseKey)
+        const { data, error } = await supabase.from("projects").insert(payload).select().single()
+        if (!error && data) {
+          res.writeHead(201, { "Content-Type": "application/json" })
+          res.end(JSON.stringify(data))
           return
         }
-
-        payload.slug = payload.slug || payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-        payload.user_id = user.id
-        payload.is_public = payload.is_public ?? false
-
-        if (supabaseUrl && supabaseKey) {
-          try {
-            const supabase = createClient(supabaseUrl, supabaseKey)
-            const { data, error } = await supabase.from("projects").insert(payload).select().single()
-            if (!error && data) {
-              res.writeHead(201, { "Content-Type": "application/json" })
-              res.end(JSON.stringify(data))
-              return
-            }
-          } catch (err) {
-            console.warn("[Project Handler] Remote insert failed, storing locally:", err)
-          }
-        }
-
-        localProjects.push(payload)
-        res.writeHead(201, { "Content-Type": "application/json" })
-        res.end(JSON.stringify(payload))
-      } catch {
-        res.writeHead(400, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "Invalid JSON" }))
+      } catch (err) {
+        console.warn("[Project Handler] Remote insert failed, storing locally:", err)
       }
-    })
+    }
+
+    localProjects.push(payload)
+    res.writeHead(201, { "Content-Type": "application/json" })
+    res.end(JSON.stringify(payload))
     return
   }
 
@@ -296,47 +315,38 @@ export async function handleDeployments(
   }
 
   if (req.method === "POST") {
-    let body = ""
-    req.on("data", (chunk) => (body += chunk))
-    req.on("end", async () => {
+    const payload = await readBodyJson<DeploymentPayload & { user_id?: string }>(req)
+    if (!payload || !payload.contract_address || !payload.tx_hash) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "contract_address and tx_hash are required" }))
+      return
+    }
+
+    if (user) {
+      payload.user_id = user.id
+    }
+
+    // On-chain cryptographic verification
+    const isVerified = await verifyOnChainDeployment(payload)
+    payload.verification_status = isVerified ? "verified" : "unverified"
+
+    if (supabaseUrl && supabaseKey) {
       try {
-        const payload = JSON.parse(body) as DeploymentPayload & { user_id?: string }
-        if (!payload.contract_address || !payload.tx_hash) {
-          res.writeHead(400, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "contract_address and tx_hash are required" }))
+        const supabase = createClient(supabaseUrl, supabaseKey)
+        const { data, error } = await supabase.from("deployments").insert(payload).select().single()
+        if (!error && data) {
+          res.writeHead(201, { "Content-Type": "application/json" })
+          res.end(JSON.stringify(data))
           return
         }
-
-        if (user) {
-          payload.user_id = user.id
-        }
-
-        // On-chain cryptographic verification
-        const isVerified = await verifyOnChainDeployment(payload)
-        payload.verification_status = isVerified ? "verified" : "unverified"
-
-        if (supabaseUrl && supabaseKey) {
-          try {
-            const supabase = createClient(supabaseUrl, supabaseKey)
-            const { data, error } = await supabase.from("deployments").insert(payload).select().single()
-            if (!error && data) {
-              res.writeHead(201, { "Content-Type": "application/json" })
-              res.end(JSON.stringify(data))
-              return
-            }
-          } catch (err) {
-            console.warn("[Deployments Handler] Remote insert failed, storing locally:", err)
-          }
-        }
-
-        localDeployments.unshift(payload)
-        res.writeHead(201, { "Content-Type": "application/json" })
-        res.end(JSON.stringify(payload))
-      } catch {
-        res.writeHead(400, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "Invalid JSON" }))
+      } catch (err) {
+        console.warn("[Deployments Handler] Remote insert failed, storing locally:", err)
       }
-    })
+    }
+
+    localDeployments.unshift(payload)
+    res.writeHead(201, { "Content-Type": "application/json" })
+    res.end(JSON.stringify(payload))
     return
   }
 
@@ -377,43 +387,34 @@ export async function handleTokenMints(
   }
 
   if (req.method === "POST") {
-    let body = ""
-    req.on("data", (chunk) => (body += chunk))
-    req.on("end", async () => {
+    const payload = await readBodyJson<TokenMintPayload & { user_id?: string }>(req)
+    if (!payload || !payload.mint_address || !payload.tx_hash) {
+      res.writeHead(400, { "Content-Type": "application/json" })
+      res.end(JSON.stringify({ error: "mint_address and tx_hash are required" }))
+      return
+    }
+
+    if (user) {
+      payload.user_id = user.id
+    }
+
+    if (supabaseUrl && supabaseKey) {
       try {
-        const payload = JSON.parse(body) as TokenMintPayload & { user_id?: string }
-        if (!payload.mint_address || !payload.tx_hash) {
-          res.writeHead(400, { "Content-Type": "application/json" })
-          res.end(JSON.stringify({ error: "mint_address and tx_hash are required" }))
+        const supabase = createClient(supabaseUrl, supabaseKey)
+        const { data, error } = await supabase.from("token_mints").insert(payload).select().single()
+        if (!error && data) {
+          res.writeHead(201, { "Content-Type": "application/json" })
+          res.end(JSON.stringify(data))
           return
         }
-
-        if (user) {
-          payload.user_id = user.id
-        }
-
-        if (supabaseUrl && supabaseKey) {
-          try {
-            const supabase = createClient(supabaseUrl, supabaseKey)
-            const { data, error } = await supabase.from("token_mints").insert(payload).select().single()
-            if (!error && data) {
-              res.writeHead(201, { "Content-Type": "application/json" })
-              res.end(JSON.stringify(data))
-              return
-            }
-          } catch (err) {
-            console.warn("[Token Mints Handler] Remote insert failed, storing locally:", err)
-          }
-        }
-
-        localTokenMints.unshift(payload)
-        res.writeHead(201, { "Content-Type": "application/json" })
-        res.end(JSON.stringify(payload))
-      } catch {
-        res.writeHead(400, { "Content-Type": "application/json" })
-        res.end(JSON.stringify({ error: "Invalid JSON" }))
+      } catch (err) {
+        console.warn("[Token Mints Handler] Remote insert failed, storing locally:", err)
       }
-    })
+    }
+
+    localTokenMints.unshift(payload)
+    res.writeHead(201, { "Content-Type": "application/json" })
+    res.end(JSON.stringify(payload))
     return
   }
 

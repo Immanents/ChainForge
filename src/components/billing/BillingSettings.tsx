@@ -72,9 +72,16 @@ export function BillingSettings() {
       const headers = await getAuthHeaders()
       const res = await fetch("/api/billing/subscription", { headers })
       if (res.ok) {
-        const data = await res.json()
-        setSubscription(data.subscription)
-        setTransactions(data.transactions || [])
+        const rawText = await res.text()
+        try {
+          const data = rawText ? JSON.parse(rawText) : null
+          if (data) {
+            setSubscription(data.subscription)
+            setTransactions(data.transactions || [])
+          }
+        } catch {
+          // ignore non-json response
+        }
       }
     } catch (err) {
       console.warn("Failed to load billing subscription data:", err)
@@ -88,14 +95,25 @@ export function BillingSettings() {
     setMessage(null)
     try {
       const res = await fetch(`/api/billing/verify?reference=${encodeURIComponent(reference)}`)
-      const data = await res.json()
-      if (res.ok && data.success) {
+      const rawText = await res.text()
+      let data: any = null
+      try {
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        throw new Error(
+          res.status >= 500
+            ? "Verification service is busy. Please refresh in a moment."
+            : rawText || `Verification failed (HTTP ${res.status})`,
+        )
+      }
+
+      if (res.ok && data?.success) {
         setMessage({ type: "success", text: "Payment verified successfully! Your plan and credits have been updated." })
         setSandboxRef(null)
         await refreshProfile()
         await loadBillingData()
       } else {
-        setMessage({ type: "error", text: data.error || "Payment verification failed." })
+        setMessage({ type: "error", text: data?.error || "Payment verification failed." })
       }
     } catch (err: unknown) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Verification failed" })
@@ -121,9 +139,20 @@ export function BillingSettings() {
         }),
       })
 
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to initialize payment")
+      const rawText = await res.text()
+      let data: any = null
+      try {
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        throw new Error(
+          res.status >= 500
+            ? "Payment service is currently initializing or updating. Please try again in a few moments."
+            : rawText || `Payment request failed (HTTP ${res.status})`,
+        )
+      }
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Failed to initialize payment")
       }
 
       // If simulated developer sandbox, show prompt, else redirect to Paystack
@@ -155,9 +184,20 @@ export function BillingSettings() {
         }),
       })
 
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to initialize credit purchase")
+      const rawText = await res.text()
+      let data: any = null
+      try {
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        throw new Error(
+          res.status >= 500
+            ? "Payment service is currently initializing or updating. Please try again in a few moments."
+            : rawText || `Top-up request failed (HTTP ${res.status})`,
+        )
+      }
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Failed to initialize credit purchase")
       }
 
       if (data.authorization_url?.includes("simulated_checkout=true")) {
@@ -185,12 +225,24 @@ export function BillingSettings() {
         method: "POST",
         headers,
       })
-      const data = await res.json()
-      if (res.ok && data.success) {
+
+      const rawText = await res.text()
+      let data: any = null
+      try {
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        throw new Error(
+          res.status >= 500
+            ? "Billing service temporarily unavailable. Please try again."
+            : rawText || `Cancellation failed (HTTP ${res.status})`,
+        )
+      }
+
+      if (res.ok && data?.success) {
         setMessage({ type: "success", text: "Subscription updated: will cancel at period end." })
         await loadBillingData()
       } else {
-        setMessage({ type: "error", text: data.error || "Failed to cancel subscription." })
+        setMessage({ type: "error", text: data?.error || "Failed to cancel subscription." })
       }
     } catch (err: unknown) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Cancellation failed" })

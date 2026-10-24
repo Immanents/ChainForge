@@ -155,14 +155,18 @@ export function BillingSettings() {
         throw new Error(data?.error || "Failed to initialize payment")
       }
 
-      // 1. If Paystack Inline SDK is loaded, open popup directly on screen
+      // 1. If Paystack Inline SDK is loaded AND a valid public key is present, open popup directly on screen
       if (data.access_code && !data.authorization_url?.includes("simulated_checkout=true")) {
-        const paystackKey =
+        const paystackKey = (
           data.public_key ||
           import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ||
-          "pk_test_chainforge"
+          ""
+        ).trim()
 
-        if (typeof (window as any).PaystackPop !== "undefined") {
+        const hasValidPublicKey =
+          paystackKey.startsWith("pk_test_") || paystackKey.startsWith("pk_live_")
+
+        if (typeof (window as any).PaystackPop !== "undefined" && hasValidPublicKey) {
           try {
             const popup = (window as any).PaystackPop.setup({
               key: paystackKey,
@@ -183,7 +187,7 @@ export function BillingSettings() {
           }
         }
 
-        // If PaystackPop is not available on window, open the Paystack checkout page
+        // If public key is not configured, seamlessly open the official Paystack checkout page!
         if (data.authorization_url) {
           window.location.href = data.authorization_url
           return
@@ -235,14 +239,18 @@ export function BillingSettings() {
         throw new Error(data?.error || "Failed to initialize credit purchase")
       }
 
-      // 1. If Paystack Inline SDK is loaded, open popup directly on screen
+      // 1. If Paystack Inline SDK is loaded AND a valid public key is present, open popup directly on screen
       if (data.access_code && !data.authorization_url?.includes("simulated_checkout=true")) {
-        const paystackKey =
+        const paystackKey = (
           data.public_key ||
           import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ||
-          "pk_test_chainforge"
+          ""
+        ).trim()
 
-        if (typeof (window as any).PaystackPop !== "undefined") {
+        const hasValidPublicKey =
+          paystackKey.startsWith("pk_test_") || paystackKey.startsWith("pk_live_")
+
+        if (typeof (window as any).PaystackPop !== "undefined" && hasValidPublicKey) {
           try {
             const popup = (window as any).PaystackPop.setup({
               key: paystackKey,
@@ -263,6 +271,7 @@ export function BillingSettings() {
           }
         }
 
+        // If public key is not configured, seamlessly open the official Paystack checkout page!
         if (data.authorization_url) {
           window.location.href = data.authorization_url
           return

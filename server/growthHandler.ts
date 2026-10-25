@@ -288,6 +288,83 @@ export async function handleGrowthContent(
     return
   }
 
+  if (req.method === "PATCH" || req.method === "PUT") {
+    const body = await readJson<{
+      id: string
+      title?: string
+      content?: string
+      platform?: string
+      status?: "draft" | "scheduled" | "published"
+      imagePrompt?: string
+      imageUrl?: string
+      scheduledFor?: string | null
+    }>(req)
+
+    if (!body || !body.id) {
+      res.statusCode = 400
+      res.end(JSON.stringify({ error: "Missing draft ID" }))
+      return
+    }
+
+    const updates: Record<string, unknown> = {}
+    if (body.title !== undefined) updates.title = body.title
+    if (body.content !== undefined) updates.content = body.content
+    if (body.platform !== undefined) updates.platform = body.platform
+    if (body.status !== undefined) updates.status = body.status
+    if (body.imagePrompt !== undefined) updates.image_prompt = body.imagePrompt
+    if (body.imageUrl !== undefined) updates.image_url = body.imageUrl
+    if (body.scheduledFor !== undefined) updates.scheduled_for = body.scheduledFor
+
+    const { data, error } = await supabase
+      .from("content_drafts")
+      .update(updates)
+      .eq("id", body.id)
+      .eq("user_id", user.id)
+      .select()
+      .single()
+
+    if (error) {
+      res.statusCode = 500
+      res.end(JSON.stringify({ error: error.message }))
+      return
+    }
+
+    res.statusCode = 200
+    res.end(JSON.stringify({ success: true, draft: data }))
+    return
+  }
+
+  if (req.method === "DELETE") {
+    const url = new URL(req.url || "", `http://${req.headers.host || "localhost"}`)
+    let id = url.searchParams.get("id")
+    if (!id) {
+      const body = await readJson<{ id: string }>(req)
+      id = body?.id || null
+    }
+
+    if (!id) {
+      res.statusCode = 400
+      res.end(JSON.stringify({ error: "Missing draft ID" }))
+      return
+    }
+
+    const { error } = await supabase
+      .from("content_drafts")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id)
+
+    if (error) {
+      res.statusCode = 500
+      res.end(JSON.stringify({ error: error.message }))
+      return
+    }
+
+    res.statusCode = 200
+    res.end(JSON.stringify({ success: true, id }))
+    return
+  }
+
   res.statusCode = 405
   res.end(JSON.stringify({ error: "Method not allowed" }))
 }

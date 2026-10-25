@@ -43,6 +43,20 @@ export class AuthService {
   }
 
   public static async getProfile(userId: string): Promise<UserProfile | null> {
+    try {
+      // 1. Primary: Use SECURITY DEFINER RPC to bypass PostgreSQL client RLS recursion
+      const { data: rpcData, error: rpcError } = await supabase.rpc("get_user_billing_profile", {
+        p_user_id: userId,
+      })
+
+      if (!rpcError && rpcData?.success && rpcData.profile) {
+        return rpcData.profile as UserProfile
+      }
+    } catch {
+      // fallback
+    }
+
+    // 2. Secondary fallback
     const { data, error } = await supabase
       .from("profiles")
       .select("*")

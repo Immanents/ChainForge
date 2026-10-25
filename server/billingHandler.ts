@@ -286,6 +286,28 @@ export async function handleBillingVerify(
     return
   }
 
+  // Direct safeguard: ensure profiles.plan is updated to 'pro' or 'team'
+  try {
+    const { data: tx } = await supabase
+      .from("payment_transactions")
+      .select("*")
+      .eq("reference", reference)
+      .maybeSingle()
+
+    if (tx && tx.user_id && tx.type === "subscription") {
+      const tier = tx.plan_id?.startsWith("team") ? "team" : "pro"
+      await supabase
+        .from("profiles")
+        .update({
+          plan: tier,
+          status: "active",
+        })
+        .eq("id", tx.user_id)
+    }
+  } catch (syncErr) {
+    console.warn("[Billing Handler] Secondary profile sync notice:", syncErr)
+  }
+
   res.statusCode = 200
   res.end(
     JSON.stringify({

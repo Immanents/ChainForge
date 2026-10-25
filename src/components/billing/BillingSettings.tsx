@@ -52,10 +52,19 @@ export function BillingSettings() {
   const [verifyingSandbox, setVerifyingSandbox] = useState(false)
 
   useEffect(() => {
-    // Check if redirected back from checkout
+    // Check if redirected back from checkout (supports searchParams or hash searchParams)
     const url = new URL(window.location.href)
-    const ref = url.searchParams.get("reference")
-    const isSandbox = url.searchParams.get("simulated_checkout") === "true"
+    let ref = url.searchParams.get("reference") || url.searchParams.get("trxref")
+    let isSandbox = url.searchParams.get("simulated_checkout") === "true"
+
+    if (!ref && window.location.hash.includes("?")) {
+      const hashQuery = window.location.hash.split("?")[1]
+      const hashParams = new URLSearchParams(hashQuery)
+      ref = hashParams.get("reference") || hashParams.get("trxref")
+      if (hashParams.get("simulated_checkout") === "true") {
+        isSandbox = true
+      }
+    }
 
     if (ref && isSandbox) {
       setSandboxRef(ref)
@@ -63,6 +72,8 @@ export function BillingSettings() {
       verifyPayment(ref)
     }
 
+    // Refresh profile in AuthContext and load billing data
+    refreshProfile()
     loadBillingData()
   }, [])
 
@@ -729,10 +740,20 @@ export function BillingSettings() {
                     <td className="py-2.5 font-bold">
                       ${(tx.amount_minor_units / 100).toFixed(2)} {tx.currency}
                     </td>
-                    <td className="py-2.5">
+                    <td className="py-2.5 flex items-center gap-2">
                       <Badge tone={tx.status === "success" ? "success" : tx.status === "pending" ? "warning" : "danger"}>
                         {tx.status.toUpperCase()}
                       </Badge>
+                      {tx.status === "pending" && (
+                        <button
+                          type="button"
+                          className="text-[10px] text-brand hover:underline font-sans"
+                          onClick={() => verifyPayment(tx.reference)}
+                          disabled={verifyingSandbox}
+                        >
+                          Check Status
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

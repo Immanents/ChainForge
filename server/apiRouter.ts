@@ -3,6 +3,7 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http"
 import { handleBlueprintRequest, INPUT_LIMITS } from "./blueprintHandler.ts"
+import { handleContentGenerationRequest, CONTENT_LIMITS } from "./contentHandler.ts"
 import { handleEarlyAccessRequest, EARLY_ACCESS_LIMITS } from "./earlyAccessHandler.ts"
 import { generateCodebaseBundle } from "./codebaseGenerator.ts"
 import { handleProjects, handleDeployments, handleTokenMints } from "./projectHandler.ts"
@@ -171,6 +172,60 @@ export async function handleApiRoute(
       headers: req.headers,
       body: bodyResult.data,
     })
+
+    res.statusCode = response.status
+    if (response.headers) {
+      for (const [k, v] of Object.entries(response.headers)) {
+        res.setHeader(k, v)
+      }
+    }
+    res.end(JSON.stringify(response.body))
+    return true
+  }
+
+  // 2b. Protected AI Content Studio Generation (Cost: 5 credits)
+  if (path === "/api/generate-content" || path === "/api/growth/content/generate") {
+    const user = await authenticateRequest(req, res, supabaseUrl, supabaseKey)
+    if (!user) return true
+
+    const bodyResult = await readJsonBody(req, CONTENT_LIMITS.maxBodyBytes)
+    if (!bodyResult.ok) {
+      res.statusCode = bodyResult.status
+      res.setHeader("Content-Type", "application/json")
+      res.end(JSON.stringify({ error: bodyResult.error }))
+      return true
+    }
+
+    const idempotencyKey =
+      (req.headers["x-idempotency-key"] as string) ||
+      `cnt-${user.id}-${Date.now()}`
+
+    const deduction = await deductCredits(
+      supabaseUrl,
+      supabaseKey,
+      user.id,
+      5,
+      idempotencyKey,
+      "AI Content Studio Generation",
+      { path: "/api/generate-content" },
+    )
+
+    if (!deduction.success) {
+      res.statusCode = 402
+      res.setHeader("Content-Type", "application/json")
+      res.end(JSON.stringify({ error: deduction.error || "Insufficient credits. 5 credits required." }))
+      return true
+    }
+
+    const response = await handleContentGenerationRequest(
+      {
+        method: req.method || "GET",
+        url: req.url,
+        headers: req.headers,
+        body: bodyResult.data,
+      },
+      { apiKey, openRouterApiKey, openRouterModel },
+    )
 
     res.statusCode = response.status
     if (response.headers) {

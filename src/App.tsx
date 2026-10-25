@@ -20,11 +20,32 @@ export default function App() {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.toLowerCase()
       if (hash.startsWith("#app")) return "app"
+      const url = new URL(window.location.href)
+      if (
+        url.searchParams.has("reference") ||
+        url.searchParams.has("trxref") ||
+        url.searchParams.get("tab") === "Billing" ||
+        window.location.hash.includes("settings")
+      ) {
+        return "app"
+      }
     }
     return "landing"
   })
 
-  const [page, setPage] = useState("Overview")
+  const [page, setPage] = useState(() => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      if (
+        url.searchParams.has("reference") ||
+        url.searchParams.has("trxref") ||
+        window.location.hash.includes("settings")
+      ) {
+        return "Settings"
+      }
+    }
+    return "Overview"
+  })
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 

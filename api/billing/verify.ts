@@ -93,6 +93,28 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     p_currency: verifiedCurrency,
   })
 
+  // Direct safeguard: ensure profiles.plan is updated to 'pro' or 'team'
+  try {
+    const { data: tx } = await supabase
+      .from("payment_transactions")
+      .select("*")
+      .eq("reference", reference)
+      .maybeSingle()
+
+    if (tx && tx.user_id && tx.type === "subscription") {
+      const tier = tx.plan_id?.startsWith("team") ? "team" : "pro"
+      await supabase
+        .from("profiles")
+        .update({
+          plan: tier,
+          status: "active",
+        })
+        .eq("id", tx.user_id)
+    }
+  } catch (syncErr) {
+    console.warn("[Verify Handler] Secondary profile sync notice:", syncErr)
+  }
+
   if (fulfillError || !fulfillment?.success) {
     // Check if the transaction was already fulfilled to be idempotent
     const { data: existingTx } = await supabase
